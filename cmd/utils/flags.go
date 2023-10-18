@@ -2053,8 +2053,8 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	if cfg.QuorumLightClient.Enabled() && cfg.SyncMode != downloader.FullSync {
 		Fatalf("Only the 'full' syncmode is supported for the qlight client.")
 	}
-	if private.IsQuorumPrivacyEnabled() && cfg.SyncMode != downloader.FullSync {
-		Fatalf("Only the 'full' syncmode is supported when quorum privacy is enabled.")
+	if private.IsQuorumPrivacyEnabled() && cfg.SyncMode == downloader.SnapSync {
+		log.Warn("'snap' syncmode enabled. This is only recommended for new nodes. Existing nodes with private data in PTM needs to resync with 'full' syncmode or from existing backup.")
 	}
 	// End Quorum
 

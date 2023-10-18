@@ -1946,6 +1946,21 @@ func (d *Downloader) commitFastSyncData(results []*fetchResult, stateSync *state
 	for i, result := range results {
 		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles)
 		receipts[i] = result.Receipts
+		// Mask receipts for private transactions
+		txnByHash := make(map[common.Hash]*types.Transaction)
+		for _, t := range result.Transactions {
+			txnByHash[t.Hash()] = t
+		}
+		for _, r := range receipts[i] {
+			t, found := txnByHash[r.TxHash]
+			if found {
+				if t.IsPrivate() {
+					r.Logs = nil
+					r.Bloom = types.CreateBloom(nil)
+					break
+				}
+			}
+		}
 	}
 	if index, err := d.blockchain.InsertReceiptChain(blocks, receipts, d.ancientLimit); err != nil {
 		log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
