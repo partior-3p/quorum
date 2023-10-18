@@ -810,10 +810,10 @@ func (q *queue) DeliverReceipts(id string, receiptList [][]*types.Receipt) (int,
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	validate := func(index int, header *types.Header) error {
-		if types.DeriveSha(types.Receipts(receiptList[index]), trie.NewStackTrie(nil)) != header.ReceiptHash {
-			return errInvalidReceipt
-		}
+		// Quorum
+		// validation is disabled since transaction receipts can diverge from block headers due to private state
 		return nil
+		// End Quorum
 	}
 	reconstruct := func(index int, result *fetchResult) {
 		result.Receipts = receiptList[index]
