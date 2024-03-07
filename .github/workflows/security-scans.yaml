@@ -1,12 +1,13 @@
 name: Security Scans
 on:
   push:
-    branches: [ main, 'release/**' ]
+  # 3p/quorum uses base/** as the default. No release branch.
+    branches: [ 'base/**' ]
     
   workflow_dispatch:
 
   schedule:
-  # Runs daily at 00:00 - need to convert to UTC + 8 (Singapore)
+  # Runs daily at 1:00AM - UTC+8 (Singapore)
   - cron: 0 17 * * *
 
 jobs:
