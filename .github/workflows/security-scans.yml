@@ -1,0 +1,16 @@
+name: Security Scans
+on:
+  push:
+  # 3p/quorum uses base/** as the default. No release branch.
+    branches: [ 'base/**' ]
+
+  workflow_dispatch:
+
+  schedule:
+  # Runs daily at 1:00AM - UTC+8 (Singapore)
+  - cron: 0 17 * * *
+
+jobs:
+  security-pipeline: 
+    uses: partior-sec-eng/security-scanning-pipeline/.github/workflows/security-scanning.yaml@main
+    secrets: inherit
