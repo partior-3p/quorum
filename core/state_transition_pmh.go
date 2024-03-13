@@ -87,10 +87,6 @@ func (pmh *privateMessageHandler) verify(vmerr error) (bool, error) {
 	log.Trace("Verify hashes of affected contracts", "expectedHashes", pmh.receivedPrivacyMetadata.ACHashes, "numberOfAffectedAddresses", len(actualACAddresses))
 	privacyFlag := pmh.receivedPrivacyMetadata.PrivacyFlag
 	for _, addr := range actualACAddresses {
-		if core.ContractWhitelistMap != nil && core.ContractWhitelistMap.GetContractWhitelistByAddress(addr) {
-			// introduce a whitelist to allow whitelisting of contracts for EP simulation skips
-			continue
-		}
 		// GetPrivacyMetadata is invoked on the privateState (as the tx is private) and it returns:
 		// 1. public contacts: privacyMetadata = nil, err = nil
 		// 2. private contracts of type:
@@ -116,6 +112,10 @@ func (pmh *privateMessageHandler) verify(vmerr error) (bool, error) {
 				"affectedContract.Address", addr.Hex(),
 				"affectedContract.PrivacyFlag", actualPrivacyMetadata.PrivacyFlag,
 				"received.PrivacyFlag", pmh.receivedPrivacyMetadata.PrivacyFlag)
+		}
+		// Contract whitelist allows conditional execution of private transactions with different acoth for whitelisted contracts
+		if core.ContractWhitelistMap != nil && core.ContractWhitelistMap.GetContractWhitelistByAddress(addr) {
+			continue
 		}
 		// acoth check - case where node isn't privy to one of actual affecteds
 		if pmh.receivedPrivacyMetadata.ACHashes.NotExist(actualPrivacyMetadata.CreationTxHash) {
