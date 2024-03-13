@@ -76,7 +76,7 @@ func (i *Init) GetNumberOfAccounts() (*big.Int, error) {
 }
 
 func (i *Init) GetWhitelistedContracts() ([]common.Address, error) {
-	return []common.Address{}, nil
+	return nil, fmt.Errorf("contract whitelist not supported in enhanced permissioning v1")
 }
 
 func (i *Init) GetRoleDetailsFromIndex(_rIndex *big.Int) (struct {
