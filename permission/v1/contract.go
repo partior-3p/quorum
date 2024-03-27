@@ -43,6 +43,10 @@ type Account struct {
 	Backend *PermissionModelV1
 }
 
+type ContractWhitelist struct {
+	Backend *PermissionModelV1
+}
+
 type Init struct {
 	Backend ptype.ContractBackend
 
@@ -69,6 +73,10 @@ func (i *Init) GetAccountDetailsFromIndex(_aIndex *big.Int) (common.Address, str
 
 func (i *Init) GetNumberOfAccounts() (*big.Int, error) {
 	return i.permAcctSession.GetNumberOfAccounts()
+}
+
+func (i *Init) GetWhitelistedContracts() ([]common.Address, error) {
+	return nil, fmt.Errorf("contract whitelist not supported in enhanced permissioning v1")
 }
 
 func (i *Init) GetRoleDetailsFromIndex(_rIndex *big.Int) (struct {
@@ -269,6 +277,14 @@ func (a *Account) ApproveAdminRole(_args ptype.TxArgs) (*types.Transaction, erro
 
 func (a *Account) AssignAdminRole(_args ptype.TxArgs) (*types.Transaction, error) {
 	return a.Backend.PermInterfSession.AssignAdminRole(_args.OrgId, _args.AcctId, _args.RoleId)
+}
+
+func (i *ContractWhitelist) AddWhitelist(_args ptype.TxArgs) (*types.Transaction, error) {
+	return nil, fmt.Errorf("contract whitelist not supported in enhanced permissioning v1")
+}
+
+func (i *ContractWhitelist) RevokeWhitelistByAddress(_args ptype.TxArgs) (*types.Transaction, error) {
+	return nil, fmt.Errorf("contract whitelist not supported in enhanced permissioning v1")
 }
 
 // This is to make sure all Contr instances are ready and initialized

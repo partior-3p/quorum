@@ -14,16 +14,17 @@ import (
 
 // TxArgs holds arguments required for execute functions
 type TxArgs struct {
-	OrgId      string
-	POrgId     string
-	Url        string
-	RoleId     string
-	IsVoter    bool
-	IsAdmin    bool
-	AcctId     common.Address
-	AccessType uint8
-	Action     uint8
-	Txa        ethapi.SendTxArgs
+	OrgId           string
+	POrgId          string
+	Url             string
+	RoleId          string
+	IsVoter         bool
+	IsAdmin         bool
+	AcctId          common.Address
+	AccessType      uint8
+	Action          uint8
+	ContractAddress common.Address
+	Txa             ethapi.SendTxArgs
 }
 
 type ContractBackend struct {
@@ -33,6 +34,11 @@ type ContractBackend struct {
 	IsRaft     bool
 	UseDns     bool
 	ChainID    *big.Int
+}
+
+type ContractWhitelistService interface {
+	AddWhitelist(_args TxArgs) (*types.Transaction, error)
+	RevokeWhitelistByAddress(_args TxArgs) (*types.Transaction, error)
 }
 
 type RoleService interface {
@@ -91,6 +97,8 @@ type InitService interface {
 	GetAccountDetailsFromIndex(_aIndex *big.Int) (common.Address, string, string, *big.Int, bool, error)
 	GetNumberOfAccounts() (*big.Int, error)
 	GetAccountDetails(_account common.Address) (common.Address, string, string, *big.Int, bool, error)
+
+	GetWhitelistedContracts() ([]common.Address, error)
 
 	GetRoleDetailsFromIndex(_rIndex *big.Int) (struct {
 		RoleId     string

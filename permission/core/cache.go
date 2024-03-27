@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -140,10 +141,11 @@ var orgAdminRole string
 var PermissionModel = Default
 var PermissionTransactionAllowedFunc func(_sender common.Address, _target common.Address, _value *big.Int, _gasPrice *big.Int, _gasLimit *big.Int, _payload []byte, _transactionType TransactionType) error
 var (
-	OrgInfoMap  *OrgCache
-	NodeInfoMap *NodeCache
-	RoleInfoMap *RoleCache
-	AcctInfoMap *AcctCache
+	OrgInfoMap           *OrgCache
+	NodeInfoMap          *NodeCache
+	RoleInfoMap          *RoleCache
+	AcctInfoMap          *AcctCache
+	ContractWhitelistMap *ContractWhitelistCache
 )
 
 type OrgKey struct {
@@ -245,6 +247,16 @@ func NewAcctCache(cacheSize int) *AcctCache {
 
 	acctCache.c, _ = lru.NewWithEvict(cacheSize, onEvictedFunc)
 	return &acctCache
+}
+
+type ContractWhitelistCache struct {
+	c map[common.Address]bool // address to bool
+}
+
+func NewContractWhitelistCache() *ContractWhitelistCache {
+	// we don't use a lru here since the entire whitelist should always be in memory
+	contractWhitelistCache := ContractWhitelistCache{c: make(map[common.Address]bool)}
+	return &contractWhitelistCache
 }
 
 func SetSyncStatus() {
@@ -366,7 +378,7 @@ func (o *OrgCache) GetOrg(orgId string) (*OrgInfo, error) {
 		//return the record
 		return orgRec, nil
 	}
-	return nil, errors.New("Org does not exist")
+	return nil, errors.New("org does not exist")
 }
 
 func (o *OrgCache) GetOrgList() []OrgInfo {
@@ -406,7 +418,7 @@ func (n *NodeCache) GetNodeByUrl(url string) (*NodeInfo, error) {
 		//return the record
 		return nodeRec, err
 	}
-	return nil, errors.New("Node does not exist")
+	return nil, errors.New("node does not exist")
 }
 
 func (n *NodeCache) getSourceList() []*NodeInfo {
@@ -516,7 +528,7 @@ func (r *RoleCache) GetRole(orgId string, roleId string) (*RoleInfo, error) {
 		//return the record
 		return roleRec, nil
 	}
-	return nil, errors.New("Invalid role")
+	return nil, errors.New("invalid role")
 }
 
 func (r *RoleCache) GetRoleList() []RoleInfo {
@@ -592,6 +604,28 @@ func CheckIfAdminAccount(acctId common.Address) bool {
 		}
 	}
 	return false
+}
+
+func (c *ContractWhitelistCache) GetContractWhitelist() []common.Address {
+	keysReflect := reflect.ValueOf(c.c).MapKeys()
+	keys := make([]common.Address, len(keysReflect))
+	for i, v := range keysReflect {
+		keys[i] = v.Interface().(common.Address)
+	}
+	return keys
+}
+
+func (c *ContractWhitelistCache) AddContractWhitelist(contract common.Address) {
+	c.c[contract] = true
+}
+
+func (c *ContractWhitelistCache) RemoveContractWhitelist(contract common.Address) {
+	delete(c.c, contract)
+}
+
+func (c *ContractWhitelistCache) GetContractWhitelistByAddress(contractAddress common.Address) bool {
+	_, ok := c.c[contractAddress]
+	return ok
 }
 
 // validates if the account can transact from the current node

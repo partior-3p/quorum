@@ -1,24 +1,24 @@
-pragma solidity ^0.5.3;
+pragma solidity ^0.8.17;
 
 import "./PermissionsImplementation.sol";
 import "./PermissionsUpgradable.sol";
+import "./openzeppelin-v5/Initializable.sol";
 
 /** @title Permissions Interface Contract
   * @notice This contract is the interface for permissions implementation
     contract. for any call, it forwards the call to the implementation
     contract
   */
-contract PermissionsInterface {
+contract PermissionsInterface is Initializable {
     PermissionsImplementation private permImplementation;
     PermissionsUpgradable private permUpgradable;
     address private permImplUpgradeable;
 
-    /** @notice constructor
-      * @param _permImplUpgradeable permissions upgradable contract address
-      */
-    constructor(address _permImplUpgradeable) public {
+    // @notice initialized only once. sets the permissions upgradable contract address
+    function initialize(address _permImplUpgradeable) public initializer {
+        require(_permImplUpgradeable != address(0x0), "Cannot set to empty address");
         permImplUpgradeable = _permImplUpgradeable;
-    }
+    }  
 
     /** @notice confirms that the caller is the address of upgradable
         contract
@@ -45,6 +45,13 @@ contract PermissionsInterface {
       */
     function init(uint256 _breadth, uint256 _depth) external {
         permImplementation.init(_breadth, _depth);
+    }
+
+    /** @notice specify whether to perform source node IP validation in determining the connection permission.
+      * @param _isIpValidationEnabled whether to enable or disable the IP validation
+      */
+    function setIpValidation(bool _isIpValidationEnabled) external {
+        permImplementation.setIpValidation(_isIpValidationEnabled);
     }
 
     /** @notice interface to add new node to an admin organization
@@ -201,7 +208,6 @@ contract PermissionsInterface {
       */
     function addNode(string memory _orgId, string memory _enodeId, string memory _ip, uint16 _port, uint16 _raftport) public {
         permImplementation.addNode(_orgId, _enodeId, _ip, _port, _raftport, msg.sender);
-
     }
 
     /** @notice interface to update node status
@@ -215,6 +221,20 @@ contract PermissionsInterface {
     function updateNodeStatus(string memory _orgId, string memory _enodeId, string memory _ip, uint16 _port, uint16 _raftport,
         uint256 _action) public {
         permImplementation.updateNodeStatus(_orgId, _enodeId, _ip, _port, _raftport, _action, msg.sender);
+    }
+
+    /** @notice interface to add/update contract whitelist
+      * @param _contractAddress contract address to be added to whitelist
+      */
+    function addContractWhitelist(address _contractAddress) external {
+        permImplementation.addContractWhitelist(_contractAddress, msg.sender);
+    }
+
+    /** @notice interface to revoke a contract whitelist by contract address
+      * @param _contractAddress contract address to be removed from whitelist
+      */
+    function revokeContractWhitelist(address _contractAddress) external {
+        permImplementation.revokeContractWhitelist(_contractAddress, msg.sender);
     }
 
     /** @notice interface to initiate blacklisted node recovery
@@ -292,7 +312,6 @@ contract PermissionsInterface {
     function assignAccountRole(address _account, string calldata _orgId,
         string calldata _roleId) external {
         permImplementation.assignAccountRole(_account, _orgId, _roleId, msg.sender);
-
     }
 
     /** @notice interface to check if passed account is an network admin account
@@ -346,6 +365,22 @@ contract PermissionsInterface {
     function transactionAllowed(address _sender, address _target, uint256 _value, uint256 _gasPrice, uint256 _gasLimit, bytes calldata _payload)
     external view returns (bool) {
         return permImplementation.transactionAllowed(_sender, _target, _value, _gasPrice, _gasLimit, _payload);
+    }
+
+    /** @notice function to set the default access level for unconfigured account. 
+            Unconfigured account does not have role and org membership but is assigned
+            a default access level of 5 (transfer value and/or call contract) 
+      * @param _accessLevel - set the default access level for unconfigured account.
+      */
+    function setAccessLevelForUnconfiguredAccount(uint256 _accessLevel) external
+    {
+        permImplementation.setAccessLevelForUnconfiguredAccount(_accessLevel, msg.sender);
+    }
+
+    /** @notice get the default access level for unconfigured account. */
+    function getAccessLevelForUnconfiguredAccount() external view returns (uint256)
+    {
+        return permImplementation.getAccessLevelForUnconfiguredAccount();
     }
 
 }

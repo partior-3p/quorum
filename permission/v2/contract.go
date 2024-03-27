@@ -45,21 +45,27 @@ type Node struct {
 	Backend *PermissionModelV2
 }
 
+type ContractWhitelist struct {
+	Backend *PermissionModelV2
+}
+
 type Init struct {
 	Backend ptype.ContractBackend
 	//binding contracts
-	PermUpgr   *binding.PermUpgr
-	PermInterf *binding.PermInterface
-	PermNode   *binding.NodeManager
-	PermAcct   *binding.AcctManager
-	PermRole   *binding.RoleManager
-	PermOrg    *binding.OrgManager
+	PermUpgr         *binding.PermUpgr
+	PermInterf       *binding.PermInterface
+	PermNode         *binding.NodeManager
+	PermAcct         *binding.AcctManager
+	PermRole         *binding.RoleManager
+	PermOrg          *binding.OrgManager
+	PermCtrWhitelist *binding.ContractWhitelistManager
 	//sessions
-	PermInterfSession *binding.PermInterfaceSession
-	permOrgSession    *binding.OrgManagerSession
-	permNodeSession   *binding.NodeManagerSession
-	permRoleSession   *binding.RoleManagerSession
-	permAcctSession   *binding.AcctManagerSession
+	PermInterfSession       *binding.PermInterfaceSession
+	permOrgSession          *binding.OrgManagerSession
+	permNodeSession         *binding.NodeManagerSession
+	permRoleSession         *binding.RoleManagerSession
+	permAcctSession         *binding.AcctManagerSession
+	permCtrWhitelistSession *binding.ContractWhitelistManagerSession
 }
 
 func (a *Account) AssignAccountRole(_args ptype.TxArgs) (*types.Transaction, error) {
@@ -317,6 +323,18 @@ func (n *Node) UpdateNodeStatus(_args ptype.TxArgs) (*types.Transaction, error) 
 	return n.Backend.PermInterfSession.UpdateNodeStatus(_args.OrgId, enodeId, ip, port, raftPort, big.NewInt(int64(_args.Action)))
 }
 
+func (i *Init) GetWhitelistedContracts() ([]common.Address, error) {
+	return i.permCtrWhitelistSession.GetWhitelistedContracts()
+}
+
+func (c *ContractWhitelist) AddWhitelist(_args ptype.TxArgs) (*types.Transaction, error) {
+	return c.Backend.PermInterfSession.AddContractWhitelist(_args.ContractAddress)
+}
+
+func (c *ContractWhitelist) RevokeWhitelistByAddress(_args ptype.TxArgs) (*types.Transaction, error) {
+	return c.Backend.PermInterfSession.RevokeContractWhitelist(_args.ContractAddress)
+}
+
 func (i *Init) bindContract() error {
 	if err := ptype.BindContract(&i.PermUpgr, func() (interface{}, error) {
 		return binding.NewPermUpgr(i.Backend.PermConfig.UpgrdAddress, i.Backend.EthClnt)
@@ -345,6 +363,11 @@ func (i *Init) bindContract() error {
 	}
 	if err := ptype.BindContract(&i.PermOrg, func() (interface{}, error) {
 		return binding.NewOrgManager(i.Backend.PermConfig.OrgAddress, i.Backend.EthClnt)
+	}); err != nil {
+		return err
+	}
+	if err := ptype.BindContract(&i.PermCtrWhitelist, func() (interface{}, error) {
+		return binding.NewContractWhitelistManager(i.Backend.PermConfig.ContractWhitelistAddress, i.Backend.EthClnt)
 	}); err != nil {
 		return err
 	}
@@ -397,6 +420,14 @@ func (i *Init) initSession() {
 	//populate accounts
 	i.permAcctSession = &binding.AcctManagerSession{
 		Contract: i.PermAcct,
+		CallOpts: bind.CallOpts{
+			Pending: true,
+		},
+	}
+
+	//populate contract whitelist
+	i.permCtrWhitelistSession = &binding.ContractWhitelistManagerSession{
+		Contract: i.PermCtrWhitelist,
 		CallOpts: bind.CallOpts{
 			Pending: true,
 		},

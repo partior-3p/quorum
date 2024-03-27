@@ -16,6 +16,10 @@ type Backend struct {
 	Contr *Init
 }
 
+func (b *Backend) ManageContractWhitelistPermissions() error {
+	return nil // contract whitelist is only supported for v2 permission
+}
+
 func (b *Backend) ManageAccountPermissions() error {
 	chAccessModified := make(chan *pb.AcctManagerAccountAccessModified)
 	chAccessRevoked := make(chan *pb.AcctManagerAccountAccessRevoked)
@@ -348,6 +352,10 @@ func (b *Backend) GetAccountService(transactOpts *bind.TransactOpts, accountBack
 		return nil, err
 	}
 	return &Account{Backend: backEnd}, nil
+}
+
+func (b *Backend) GetContractWhitelistService(transactOpts *bind.TransactOpts, contractWhitelistBackend ptype.ContractBackend) (ptype.ContractWhitelistService, error) {
+	return &ContractWhitelist{}, nil
 }
 
 func (b *Backend) GetAuditService(auditBackend ptype.ContractBackend) (ptype.AuditService, error) {

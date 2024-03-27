@@ -70,7 +70,7 @@ var (
 	v2Flag          bool
 
 	permUpgrAddress, permInterfaceAddress, permImplAddress, voterManagerAddress,
-	nodeManagerAddress, roleManagerAddress, accountManagerAddress, orgManagerAddress common.Address
+	nodeManagerAddress, roleManagerAddress, accountManagerAddress, orgManagerAddress, contractWhitelistManagerAddress common.Address
 )
 
 func TestMain(m *testing.M) {
@@ -144,39 +144,88 @@ func setup() {
 
 	var permUpgrInstance *v1bind.PermUpgr
 	var permUpgrInstanceE *v2bind.PermUpgr
+	var permInterfaceInstance *v2bind.PermInterface
+	var nodeManagerInstance *v2bind.NodeManager
+	var roleManagerInstance *v2bind.RoleManager
+	var acctManagerInstance *v2bind.AcctManager
+	var orgManagerInstance *v2bind.OrgManager
+	var voterManagerInstance *v2bind.VoterManager
+	var contractWhitelistManagerInstance *v2bind.ContractWhitelistManager
+	var permImplInstance *v2bind.PermImpl
 
 	guardianTransactor, _ := bind.NewKeyedTransactorWithChainID(guardianKey, ethereum.BlockChain().Config().ChainID)
 
 	if v2Flag {
-		permUpgrAddress, _, permUpgrInstanceE, err = v2bind.DeployPermUpgr(guardianTransactor, contrBackend, guardianAddress)
+		permUpgrAddress, _, permUpgrInstanceE, err = v2bind.DeployPermUpgr(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		permInterfaceAddress, _, _, err = v2bind.DeployPermInterface(guardianTransactor, contrBackend, permUpgrAddress)
+		permInterfaceAddress, _, permInterfaceInstance, err = v2bind.DeployPermInterface(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		nodeManagerAddress, _, _, err = v2bind.DeployNodeManager(guardianTransactor, contrBackend, permUpgrAddress)
+		nodeManagerAddress, _, nodeManagerInstance, err = v2bind.DeployNodeManager(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		roleManagerAddress, _, _, err = v2bind.DeployRoleManager(guardianTransactor, contrBackend, permUpgrAddress)
+		roleManagerAddress, _, roleManagerInstance, err = v2bind.DeployRoleManager(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		accountManagerAddress, _, _, err = v2bind.DeployAcctManager(guardianTransactor, contrBackend, permUpgrAddress)
+		accountManagerAddress, _, acctManagerInstance, err = v2bind.DeployAcctManager(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		orgManagerAddress, _, _, err = v2bind.DeployOrgManager(guardianTransactor, contrBackend, permUpgrAddress)
+		orgManagerAddress, _, orgManagerInstance, err = v2bind.DeployOrgManager(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		voterManagerAddress, _, _, err = v2bind.DeployVoterManager(guardianTransactor, contrBackend, permUpgrAddress)
+		voterManagerAddress, _, voterManagerInstance, err = v2bind.DeployVoterManager(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
-		permImplAddress, _, _, err = v2bind.DeployPermImpl(guardianTransactor, contrBackend, permUpgrAddress, orgManagerAddress, roleManagerAddress, accountManagerAddress, voterManagerAddress, nodeManagerAddress)
+		contractWhitelistManagerAddress, _, contractWhitelistManagerInstance, err = v2bind.DeployContractWhitelistManager(guardianTransactor, contrBackend)
+		if err != nil {
+			t.Fatal(err)
+		}
+		permImplAddress, _, permImplInstance, err = v2bind.DeployPermImpl(guardianTransactor, contrBackend)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// call initialize
+		_, err := permUpgrInstanceE.Initialize(guardianTransactor, guardianAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = permInterfaceInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = nodeManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = roleManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = acctManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = orgManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = voterManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = contractWhitelistManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = permImplInstance.Initialize(guardianTransactor, permUpgrAddress, orgManagerAddress, roleManagerAddress, accountManagerAddress, voterManagerAddress, nodeManagerAddress, contractWhitelistManagerAddress)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,6 +290,7 @@ func TestPermissionCtrl_AfterStart(t *testing.T) {
 		assert.NotNil(t, contract.PermAcct)
 		assert.NotNil(t, contract.PermInterf)
 		assert.NotNil(t, contract.PermUpgr)
+		assert.NotNil(t, contract.PermCtrWhitelist)
 	} else {
 		var contract *v1.Init
 		contract, _ = testObject.contract.(*v1.Init)
@@ -316,7 +366,7 @@ func TestQuorumControlsAPI_ListAPIs(t *testing.T) {
 	assert.Equal(t, orgDetails.RoleList[0].RoleId, arbitraryNetworkAdminRole)
 
 	orgDetails, err = testObject.GetOrgDetails("XYZ")
-	assert.Equal(t, err, errors.New("Org does not exist"))
+	assert.Equal(t, err, errors.New("org does not exist"))
 
 	// test NodeList
 	assert.Equal(t, len(testObject.NodeList()), 0)
@@ -326,6 +376,8 @@ func TestQuorumControlsAPI_ListAPIs(t *testing.T) {
 	assert.True(t, len(testObject.OrgList()) > 0, "expected non zero org list")
 	// test RoleList
 	assert.True(t, len(testObject.RoleList()) > 0, "expected non zero org list")
+	// test ContractWhitelist
+	assert.Equal(t, len(testObject.ContractWhitelist()), 0)
 }
 
 func TestQuorumControlsAPI_OrgAPIs(t *testing.T) {
@@ -830,6 +882,7 @@ func TestParsePermissionConfig(t *testing.T) {
 	tmpPermCofig.RoleAddress = common.Address{}
 	tmpPermCofig.OrgAddress = common.Address{}
 	tmpPermCofig.NodeAddress = common.Address{}
+	tmpPermCofig.ContractWhitelistAddress = common.Address{}
 	tmpPermCofig.SubOrgBreadth = new(big.Int)
 	tmpPermCofig.SubOrgDepth = new(big.Int)
 

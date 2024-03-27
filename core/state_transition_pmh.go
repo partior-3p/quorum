@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/permission/core"
 	"github.com/ethereum/go-ethereum/private/engine"
 )
 
@@ -111,6 +112,10 @@ func (pmh *privateMessageHandler) verify(vmerr error) (bool, error) {
 				"affectedContract.Address", addr.Hex(),
 				"affectedContract.PrivacyFlag", actualPrivacyMetadata.PrivacyFlag,
 				"received.PrivacyFlag", pmh.receivedPrivacyMetadata.PrivacyFlag)
+		}
+		// Contract whitelist allows conditional execution of private transactions with different acoth for whitelisted contracts
+		if core.ContractWhitelistMap != nil && core.ContractWhitelistMap.GetContractWhitelistByAddress(addr) {
+			continue
 		}
 		// acoth check - case where node isn't privy to one of actual affecteds
 		if pmh.receivedPrivacyMetadata.ACHashes.NotExist(actualPrivacyMetadata.CreationTxHash) {

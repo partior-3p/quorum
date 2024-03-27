@@ -30,18 +30,19 @@ const (
 
 // permission config for bootstrapping
 type PermissionConfig struct {
-	PermissionsModel string         `json:"permissionModel"`
-	UpgrdAddress     common.Address `json:"upgrdableAddress"`
-	InterfAddress    common.Address `json:"interfaceAddress"`
-	ImplAddress      common.Address `json:"implAddress"`
-	NodeAddress      common.Address `json:"nodeMgrAddress"`
-	AccountAddress   common.Address `json:"accountMgrAddress"`
-	RoleAddress      common.Address `json:"roleMgrAddress"`
-	VoterAddress     common.Address `json:"voterMgrAddress"`
-	OrgAddress       common.Address `json:"orgMgrAddress"`
-	NwAdminOrg       string         `json:"nwAdminOrg"`
-	NwAdminRole      string         `json:"nwAdminRole"`
-	OrgAdminRole     string         `json:"orgAdminRole"`
+	PermissionsModel         string         `json:"permissionModel"`
+	UpgrdAddress             common.Address `json:"upgrdableAddress"`
+	InterfAddress            common.Address `json:"interfaceAddress"`
+	ImplAddress              common.Address `json:"implAddress"`
+	NodeAddress              common.Address `json:"nodeMgrAddress"`
+	AccountAddress           common.Address `json:"accountMgrAddress"`
+	RoleAddress              common.Address `json:"roleMgrAddress"`
+	VoterAddress             common.Address `json:"voterMgrAddress"`
+	OrgAddress               common.Address `json:"orgMgrAddress"`
+	ContractWhitelistAddress common.Address `json:"contractWhitelistMgrAddress"`
+	NwAdminOrg               string         `json:"nwAdminOrg"`
+	NwAdminRole              string         `json:"nwAdminRole"`
+	OrgAdminRole             string         `json:"orgAdminRole"`
 
 	Accounts      []common.Address `json:"accounts"` //initial list of account that need full access
 	SubOrgDepth   *big.Int         `json:"subOrgDepth"`
@@ -139,6 +140,8 @@ type Backend interface {
 	GetAuditService(auditBackend ContractBackend) (AuditService, error)
 	// control service for account management service
 	GetControlService(controlBackend ContractBackend) (ControlService, error)
+	// contract whitelist service for enhanced privacy contract whitelisting service
+	GetContractWhitelistService(transactOpts *bind.TransactOpts, roleBackend ContractBackend) (ContractWhitelistService, error)
 	// Monitors account access related events and updates the cache accordingly
 	ManageAccountPermissions() error
 	// Monitors Node management events and updates cache accordingly
@@ -148,7 +151,8 @@ type Backend interface {
 	ManageOrgPermissions() error
 	// monitors role management related events and updated cache
 	ManageRolePermissions() error
-
+	// monitors contract whitelist management related events and updates cache accordingly
+	ManageContractWhitelistPermissions() error
 	// monitors for network boot up complete event
 	MonitorNetworkBootUp() error
 }
