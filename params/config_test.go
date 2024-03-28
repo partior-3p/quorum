@@ -536,6 +536,7 @@ func TestIsPrivacyEnhancementsEnabled(t *testing.T) {
 	config2.PrivacyEnhancementsBlock = nil
 	config2.Transitions = []Transition{
 		{Block: big.NewInt(21), PrivacyEnhancementsEnabled: newPBool(true)},
+		{Block: big.NewInt(25), PrivacyEnhancementsEnabled: newPBool(false)},
 	}
 
 	tests := []test{
@@ -544,7 +545,9 @@ func TestIsPrivacyEnhancementsEnabled(t *testing.T) {
 		{&config1, 11, true},
 		{&config2, 20, false},
 		{&config2, 21, true},
-		{&config2, 22, true},
+		{&config2, 24, true},
+		{&config2, 25, false},
+		{&config2, 26, false},
 	}
 
 	for _, test := range tests {
