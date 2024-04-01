@@ -457,16 +457,17 @@ func TestHandlePrivateTransaction_whenPrivateFromMatchesPrivateState(t *testing.
 	assert.Nil(err)
 }
 
-func TestHandlePrivateTransaction_withPartyProtectionTxAndPrivacyEnhancementsIsDisabled(t *testing.T) {
-	assert := assert.New(t)
-	privateTxArgs.PrivacyFlag = 1
-	params.QuorumTestChainConfig.PrivacyEnhancementsBlock = nil
-	defer func() { params.QuorumTestChainConfig.PrivacyEnhancementsBlock = big.NewInt(0) }()
+// Removing this check to allow a downgrade from enhanced privacy back to standard privacy
+// func TestHandlePrivateTransaction_withPartyProtectionTxAndPrivacyEnhancementsIsDisabled(t *testing.T) {
+// 	assert := assert.New(t)
+// 	privateTxArgs.PrivacyFlag = 1
+// 	params.QuorumTestChainConfig.PrivacyEnhancementsBlock = nil
+// 	defer func() { params.QuorumTestChainConfig.PrivacyEnhancementsBlock = big.NewInt(0) }()
 
-	_, _, _, err := checkAndHandlePrivateTransaction(arbitraryCtx, &StubBackend{}, simpleStorageContractCreationTx, privateTxArgs, arbitraryFrom, NormalTransaction)
+// 	_, _, _, err := checkAndHandlePrivateTransaction(arbitraryCtx, &StubBackend{}, simpleStorageContractCreationTx, privateTxArgs, arbitraryFrom, NormalTransaction)
 
-	assert.Error(err, "PrivacyEnhancements are disabled. Can only accept transactions with PrivacyFlag=0(StandardPrivate).")
-}
+// 	assert.Error(err, "PrivacyEnhancements are disabled. Can only accept transactions with PrivacyFlag=0(StandardPrivate).")
+// }
 
 func TestHandlePrivateTransaction_whenStandardPrivateCreation(t *testing.T) {
 	assert := assert.New(t)
