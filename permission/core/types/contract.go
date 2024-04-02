@@ -36,11 +36,6 @@ type ContractBackend struct {
 	ChainID    *big.Int
 }
 
-type ContractWhitelistService interface {
-	AddWhitelist(_args TxArgs) (*types.Transaction, error)
-	RevokeWhitelistByAddress(_args TxArgs) (*types.Transaction, error)
-}
-
 type RoleService interface {
 	AddNewRole(_args TxArgs) (*types.Transaction, error)
 	RemoveRole(_args TxArgs) (*types.Transaction, error)
@@ -97,8 +92,6 @@ type InitService interface {
 	GetAccountDetailsFromIndex(_aIndex *big.Int) (common.Address, string, string, *big.Int, bool, error)
 	GetNumberOfAccounts() (*big.Int, error)
 	GetAccountDetails(_account common.Address) (common.Address, string, string, *big.Int, bool, error)
-
-	GetWhitelistedContracts() ([]common.Address, error)
 
 	GetRoleDetailsFromIndex(_rIndex *big.Int) (struct {
 		RoleId     string

@@ -14,7 +14,6 @@
 //go:generate solc --abi --bin -o . --overwrite ../PermissionsUpgradable.sol
 //go:generate solc --abi --bin -o . --overwrite ../RoleManager.sol
 //go:generate solc --abi --bin -o . --overwrite ../VoterManager.sol
-//go:generate solc --abi --bin -o . --overwrite ../ContractWhitelistManager.sol
 //go:generate solc --abi --bin -o . --overwrite ../openzeppelin-v5/Initializable.sol
 //go:generate solc --abi --bin -o . --overwrite ../openzeppelin-v5/EnumerableSet.sol
 
@@ -26,6 +25,5 @@
 //go:generate abigen -pkg bind -abi  ./PermissionsUpgradable.abi     -bin  ./PermissionsUpgradable.bin     -type permUpgr                  -out ../../bind/permission_upgr.go			--alias Initialized=Initialized
 //go:generate abigen -pkg bind -abi  ./RoleManager.abi               -bin  ./RoleManager.bin               -type RoleManager               -out ../../bind/roles.go						--alias Initialized=InitializedRoles
 //go:generate abigen -pkg bind -abi  ./VoterManager.abi              -bin  ./VoterManager.bin              -type VoterManager              -out ../../bind/voter.go						--alias Initialized=InitializedVoter
-//go:generate abigen -pkg bind -abi  ./ContractWhitelistManager.abi  -bin  ./ContractWhitelistManager.bin  -type ContractWhitelistManager  -out ../../bind/whitelist.go					--alias Initialized=InitializedWhitelist
 
 package gen

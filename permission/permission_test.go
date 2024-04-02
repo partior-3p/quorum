@@ -70,7 +70,7 @@ var (
 	v2Flag          bool
 
 	permUpgrAddress, permInterfaceAddress, permImplAddress, voterManagerAddress,
-	nodeManagerAddress, roleManagerAddress, accountManagerAddress, orgManagerAddress, contractWhitelistManagerAddress common.Address
+	nodeManagerAddress, roleManagerAddress, accountManagerAddress, orgManagerAddress common.Address
 )
 
 func TestMain(m *testing.M) {
@@ -150,7 +150,6 @@ func setup() {
 	var acctManagerInstance *v2bind.AcctManager
 	var orgManagerInstance *v2bind.OrgManager
 	var voterManagerInstance *v2bind.VoterManager
-	var contractWhitelistManagerInstance *v2bind.ContractWhitelistManager
 	var permImplInstance *v2bind.PermImpl
 
 	guardianTransactor, _ := bind.NewKeyedTransactorWithChainID(guardianKey, ethereum.BlockChain().Config().ChainID)
@@ -181,10 +180,6 @@ func setup() {
 			t.Fatal(err)
 		}
 		voterManagerAddress, _, voterManagerInstance, err = v2bind.DeployVoterManager(guardianTransactor, contrBackend)
-		if err != nil {
-			t.Fatal(err)
-		}
-		contractWhitelistManagerAddress, _, contractWhitelistManagerInstance, err = v2bind.DeployContractWhitelistManager(guardianTransactor, contrBackend)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -221,11 +216,7 @@ func setup() {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = contractWhitelistManagerInstance.Initialize(guardianTransactor, permUpgrAddress)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = permImplInstance.Initialize(guardianTransactor, permUpgrAddress, orgManagerAddress, roleManagerAddress, accountManagerAddress, voterManagerAddress, nodeManagerAddress, contractWhitelistManagerAddress)
+		_, err = permImplInstance.Initialize(guardianTransactor, permUpgrAddress, orgManagerAddress, roleManagerAddress, accountManagerAddress, voterManagerAddress, nodeManagerAddress)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -290,7 +281,6 @@ func TestPermissionCtrl_AfterStart(t *testing.T) {
 		assert.NotNil(t, contract.PermAcct)
 		assert.NotNil(t, contract.PermInterf)
 		assert.NotNil(t, contract.PermUpgr)
-		assert.NotNil(t, contract.PermCtrWhitelist)
 	} else {
 		var contract *v1.Init
 		contract, _ = testObject.contract.(*v1.Init)
@@ -376,8 +366,6 @@ func TestQuorumControlsAPI_ListAPIs(t *testing.T) {
 	assert.True(t, len(testObject.OrgList()) > 0, "expected non zero org list")
 	// test RoleList
 	assert.True(t, len(testObject.RoleList()) > 0, "expected non zero org list")
-	// test ContractWhitelist
-	assert.Equal(t, len(testObject.ContractWhitelist()), 0)
 }
 
 func TestQuorumControlsAPI_OrgAPIs(t *testing.T) {
@@ -882,7 +870,6 @@ func TestParsePermissionConfig(t *testing.T) {
 	tmpPermCofig.RoleAddress = common.Address{}
 	tmpPermCofig.OrgAddress = common.Address{}
 	tmpPermCofig.NodeAddress = common.Address{}
-	tmpPermCofig.ContractWhitelistAddress = common.Address{}
 	tmpPermCofig.SubOrgBreadth = new(big.Int)
 	tmpPermCofig.SubOrgDepth = new(big.Int)
 

@@ -16,40 +16,6 @@ type Backend struct {
 	Contr *Init
 }
 
-func (b *Backend) ManageContractWhitelistPermissions() error {
-	chContractWhitelistAdded := make(chan *eb.ContractWhitelistManagerContractWhitelistAdded)
-	chContractWhitelistRevoked := make(chan *eb.ContractWhitelistManagerContractWhitelistRevoked)
-
-	opts := &bind.WatchOpts{}
-	var blockNumber uint64 = 1
-	opts.Start = &blockNumber
-
-	if _, err := b.Contr.PermCtrWhitelist.ContractWhitelistManagerFilterer.WatchContractWhitelistAdded(opts, chContractWhitelistAdded, nil); err != nil {
-		return fmt.Errorf("failed watching on ContractWhitelistAdded event: %v", err)
-	}
-	if _, err := b.Contr.PermCtrWhitelist.ContractWhitelistManagerFilterer.WatchContractWhitelistRevoked(opts, chContractWhitelistRevoked, nil); err != nil {
-		return fmt.Errorf("failed watching on ContractWhitelistRevoked event: %v", err)
-	}
-	go func() {
-		stopChan, stopSubscription := ptype.SubscribeStopEvent()
-		defer stopSubscription.Unsubscribe()
-		for {
-			select {
-			case evtWhitelistAdded := <-chContractWhitelistAdded:
-				core.ContractWhitelistMap.AddContractWhitelist(evtWhitelistAdded.ContractAddr)
-
-			case evtWhitelistRevoked := <-chContractWhitelistRevoked:
-				core.ContractWhitelistMap.RemoveContractWhitelist(evtWhitelistRevoked.ContractAddr)
-
-			case <-stopChan:
-				log.Info("quit whitelist contract watch")
-				return
-			}
-		}
-	}()
-	return nil
-}
-
 func (b *Backend) ManageAccountPermissions() error {
 	chAccessModified := make(chan *eb.AcctManagerAccountAccessModified)
 	chAccessRevoked := make(chan *eb.AcctManagerAccountAccessRevoked)
@@ -326,14 +292,6 @@ func getInterfaceContractSession(permInterfaceInstance *eb.PermInterface, contra
 		},
 	}
 	return ps, nil
-}
-
-func (b *Backend) GetContractWhitelistService(transactOpts *bind.TransactOpts, contractWhitelistBackend ptype.ContractBackend) (ptype.ContractWhitelistService, error) {
-	backEnd, err := getBackendWithTransactOpts(contractWhitelistBackend, transactOpts)
-	if err != nil {
-		return nil, err
-	}
-	return &ContractWhitelist{Backend: backEnd}, nil
 }
 
 func (b *Backend) GetRoleService(transactOpts *bind.TransactOpts, roleBackend ptype.ContractBackend) (ptype.RoleService, error) {
