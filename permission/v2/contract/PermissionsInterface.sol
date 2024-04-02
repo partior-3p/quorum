@@ -223,20 +223,6 @@ contract PermissionsInterface is Initializable {
         permImplementation.updateNodeStatus(_orgId, _enodeId, _ip, _port, _raftport, _action, msg.sender);
     }
 
-    /** @notice interface to add/update contract whitelist
-      * @param _contractAddress contract address to be added to whitelist
-      */
-    function addContractWhitelist(address _contractAddress) external {
-        permImplementation.addContractWhitelist(_contractAddress, msg.sender);
-    }
-
-    /** @notice interface to revoke a contract whitelist by contract address
-      * @param _contractAddress contract address to be removed from whitelist
-      */
-    function revokeContractWhitelist(address _contractAddress) external {
-        permImplementation.revokeContractWhitelist(_contractAddress, msg.sender);
-    }
-
     /** @notice interface to initiate blacklisted node recovery
       * @param _orgId unique id of the organization to which the account belongs
       * @param _enodeId enode id being recovered
