@@ -5,7 +5,6 @@ import "./AccountManager.sol";
 import "./VoterManager.sol";
 import "./NodeManager.sol";
 import "./OrgManager.sol";
-import "./ContractWhitelistManager.sol";
 import "./PermissionsUpgradable.sol";
 import "./openzeppelin-v5/Initializable.sol";
 
@@ -20,7 +19,6 @@ contract PermissionsImplementation is Initializable {
     VoterManager private voterManager;
     NodeManager private nodeManager;
     OrgManager private orgManager;
-    ContractWhitelistManager private contractWhitelistManager;
     PermissionsUpgradable private permUpgradable;
 
     string private adminOrg;
@@ -111,7 +109,7 @@ contract PermissionsImplementation is Initializable {
       * @param _nodeManager - address of node manager contract
       */
     function initialize(address _permUpgradable, address _orgManager, address _rolesManager,
-        address _accountManager, address _voterManager, address _nodeManager, address _contractWhitelistManager) public initializer {
+        address _accountManager, address _voterManager, address _nodeManager) public initializer {
 
         require(_permUpgradable!=address(0x0), "_permUpgradable cannot be an empty address");
         require(_orgManager!=address(0x0), "_orgManager cannot be an empty address");
@@ -119,7 +117,6 @@ contract PermissionsImplementation is Initializable {
         require(_accountManager!=address(0x0), "_accountManager cannot be an empty address");
         require(_voterManager!=address(0x0), "_voterManager cannot be an empty address");
         require(_nodeManager!=address(0x0), "_nodeManager cannot be an empty address");
-        require(_contractWhitelistManager!=address(0x0), "_contractWhitelistManager cannot be an empty address");
 
         permUpgradable = PermissionsUpgradable(_permUpgradable);
         orgManager = OrgManager(_orgManager);
@@ -127,7 +124,6 @@ contract PermissionsImplementation is Initializable {
         accountManager = AccountManager(_accountManager);
         voterManager = VoterManager(_voterManager);
         nodeManager = NodeManager(_nodeManager);
-        contractWhitelistManager = ContractWhitelistManager(_contractWhitelistManager);
     }
 
     // initial set up related functions
@@ -339,25 +335,6 @@ contract PermissionsImplementation is Initializable {
         if ((processVote(adminOrg, _caller, pendingOp))) {
             orgManager.approveOrgStatusUpdate(_orgId, _action);
         }
-    }
-
-    // Contract whitelist related functions
-
-    /** @notice function to add/update contract whitelist
-      * @param _contractAddress contract address to be added to whitelist
-      */
-    function addContractWhitelist(address _contractAddress, address _caller) external
-    onlyInterface networkAdmin(_caller) {
-        //add new roles can be created by org admins only
-        contractWhitelistManager.addWhitelist(_contractAddress);
-    }
-
-    /** @notice interface to revoke a contract whitelist by contract address
-      * @param _contractAddress contract address to be removed from whitelist
-      */
-    function revokeContractWhitelist(address _contractAddress, address _caller) external 
-    onlyInterface networkAdmin(_caller) {
-        contractWhitelistManager.revokeWhitelist(_contractAddress);
     }
 
     // Role related functions
