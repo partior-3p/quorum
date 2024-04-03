@@ -22,6 +22,10 @@ func (s *stubPmhStateTransition) IsPrivacyEnhancementsEnabled() bool {
 	return true
 }
 
+func (s *stubPmhStateTransition) IsPEOnStandardPrivacyEnabled() bool {
+	return true
+}
+
 func (s *stubPmhStateTransition) RevertToSnapshot(val int) {
 	s.snapshot = val
 }
