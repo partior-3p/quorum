@@ -13,6 +13,7 @@ import (
 type pmcStateTransitionAPI interface {
 	SetTxPrivacyMetadata(pm *types.PrivacyMetadata)
 	IsPrivacyEnhancementsEnabled() bool
+	IsPEOnStandardPrivacyEnabled() bool
 	RevertToSnapshot(int)
 	GetStatePrivacyMetadata(addr common.Address) (*state.PrivacyMetadata, error)
 	CalculateMerkleRoot() (common.Hash, error)
@@ -42,18 +43,18 @@ func (pmh *privateMessageHandler) mustVerify() bool {
 // returns consensusErr if there is an error in the consensus execution
 func (pmh *privateMessageHandler) prepare() (vmError, consensusErr error) {
 	if pmh.receivedPrivacyMetadata != nil {
-		// Removing this check to allow a downgrade from enhanced privacy back to standard privacy
-		// if !pmh.stAPI.IsPrivacyEnhancementsEnabled() && pmh.receivedPrivacyMetadata.PrivacyFlag.IsNotStandardPrivate() {
-		// 	// This situation is only possible if the current node has been upgraded (both quorum and tessera) yet the
-		// 	// node did not apply the privacyEnhancementsBlock configuration (with a network agreed block height).
-		// 	// Since this would be considered node misconfiguration the behavior should be changed to return an error
-		// 	// which would then cause the node not to apply the block (and potentially get stuck and not be able to
-		// 	// continue to apply new blocks). The resolution should then be to revert to an appropriate block height and
-		// 	// run geth init with the network agreed privacyEnhancementsBlock.
-		// 	// The prepare method signature has been changed to allow returning the relevant error.
-		// 	return ErrPrivacyEnhancedReceivedWhenDisabled, fmt.Errorf("Privacy enhanced transaction received while privacy enhancements are disabled."+
-		// 		" Please check your node configuration. EPH=%s", pmh.eph.ToBase64())
-		// }
+		if (!pmh.stAPI.IsPrivacyEnhancementsEnabled() && !pmh.stAPI.IsPEOnStandardPrivacyEnabled()) &&
+			pmh.receivedPrivacyMetadata.PrivacyFlag.IsNotStandardPrivate() {
+			// This situation is only possible if the current node has been upgraded (both quorum and tessera) yet the
+			// node did not apply the privacyEnhancementsBlock configuration (with a network agreed block height).
+			// Since this would be considered node misconfiguration the behavior should be changed to return an error
+			// which would then cause the node not to apply the block (and potentially get stuck and not be able to
+			// continue to apply new blocks). The resolution should then be to revert to an appropriate block height and
+			// run geth init with the network agreed privacyEnhancementsBlock.
+			// The prepare method signature has been changed to allow returning the relevant error.
+			return ErrPrivacyEnhancedReceivedWhenDisabled, fmt.Errorf("Privacy enhanced transaction received while privacy enhancements are disabled."+
+				" Please check your node configuration. EPH=%s", pmh.eph.ToBase64())
+		}
 
 		if pmh.receivedPrivacyMetadata.PrivacyFlag == engine.PrivacyFlagStateValidation && common.EmptyHash(pmh.receivedPrivacyMetadata.ACMerkleRoot) {
 			log.Error(ErrPrivacyMetadataInvalidMerkleRoot.Error())

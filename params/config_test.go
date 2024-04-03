@@ -332,10 +332,10 @@ func TestCheckTransitionsData(t *testing.T) {
 	var ibftTransitionsConfig, qbftTransitionsConfig, invalidTransition, invalidBlockOrder []Transition
 	var emptyBlockPeriodSeconds uint64 = 10
 
-	tranI0 := Transition{big.NewInt(0), IBFT, 30000, 5, nil, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
-	tranQ5 := Transition{big.NewInt(5), QBFT, 30000, 5, &emptyBlockPeriodSeconds, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
-	tranI10 := Transition{big.NewInt(10), IBFT, 30000, 5, nil, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
-	tranQ8 := Transition{big.NewInt(8), QBFT, 30000, 5, &emptyBlockPeriodSeconds, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
+	tranI0 := Transition{big.NewInt(0), IBFT, 30000, 5, nil, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
+	tranQ5 := Transition{big.NewInt(5), QBFT, 30000, 5, &emptyBlockPeriodSeconds, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
+	tranI10 := Transition{big.NewInt(10), IBFT, 30000, 5, nil, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
+	tranQ8 := Transition{big.NewInt(8), QBFT, 30000, 5, &emptyBlockPeriodSeconds, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}
 
 	ibftTransitionsConfig = append(ibftTransitionsConfig, tranI0, tranI10)
 	qbftTransitionsConfig = append(qbftTransitionsConfig, tranQ5, tranQ8)
@@ -395,7 +395,7 @@ func TestCheckTransitionsData(t *testing.T) {
 			wantErr: ErrBlockOrder,
 		},
 		{
-			stored:  &ChainConfig{Transitions: []Transition{{nil, IBFT, 30000, 5, &emptyBlockPeriodSeconds, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}}},
+			stored:  &ChainConfig{Transitions: []Transition{{nil, IBFT, 30000, 5, &emptyBlockPeriodSeconds, 10, 50, common.Address{}, nil, "", nil, nil, nil, nil, nil, 0, nil, 0, nil, nil, nil, nil}}},
 			wantErr: ErrBlockNumberMissing,
 		},
 		{
@@ -554,6 +554,36 @@ func TestIsPrivacyEnhancementsEnabled(t *testing.T) {
 		isPrivacyEnhancementsEnabled := test.config.IsPrivacyEnhancementsEnabled(big.NewInt(test.blockNumber))
 		if !reflect.DeepEqual(isPrivacyEnhancementsEnabled, test.PrivacyEnhancementsEnabled) {
 			t.Errorf("error mismatch on %v:\nexpected: %v\nreceived: %v\n", test.blockNumber, test.PrivacyEnhancementsEnabled, isPrivacyEnhancementsEnabled)
+		}
+	}
+}
+
+func TestIsPEOnStandardPrivacyEnabled(t *testing.T) {
+	type test struct {
+		config                     *ChainConfig
+		blockNumber                int64
+		PEOnStandardPrivacyEnabled bool
+	}
+
+	config := *TestChainConfig
+	config.Transitions = []Transition{
+		{Block: big.NewInt(21), PrivacyEnhancementsOnStandardPrivacyEnabled: newPBool(true)},
+		{Block: big.NewInt(25), PrivacyEnhancementsOnStandardPrivacyEnabled: newPBool(false)},
+	}
+
+	tests := []test{
+		{MainnetChainConfig, 0, false},
+		{&config, 20, false},
+		{&config, 21, true},
+		{&config, 24, true},
+		{&config, 25, false},
+		{&config, 26, false},
+	}
+
+	for _, test := range tests {
+		isPEOnStandardPrivacyEnabled := test.config.IsPEOnStandardPrivacyEnabled(big.NewInt(test.blockNumber))
+		if !reflect.DeepEqual(isPEOnStandardPrivacyEnabled, test.PEOnStandardPrivacyEnabled) {
+			t.Errorf("error mismatch on %v:\nexpected: %v\nreceived: %v\n", test.blockNumber, test.PEOnStandardPrivacyEnabled, isPEOnStandardPrivacyEnabled)
 		}
 	}
 }
