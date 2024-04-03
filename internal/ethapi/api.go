@@ -2964,11 +2964,12 @@ func checkAndHandlePrivateTransaction(ctx context.Context, b Backend, tx *types.
 		return
 	}
 
-	// Removing this check to allow a downgrade from enhanced privacy back to standard privacy
-	// if !b.ChainConfig().IsPrivacyEnhancementsEnabled(b.CurrentBlock().Number()) && privateTxArgs.PrivacyFlag.IsNotStandardPrivate() {
-	// 	err = fmt.Errorf("PrivacyEnhancements are disabled. Can only accept transactions with PrivacyFlag=0(StandardPrivate).")
-	// 	return
-	// }
+	if (!b.ChainConfig().IsPrivacyEnhancementsEnabled(b.CurrentBlock().Number()) &&
+		!b.ChainConfig().IsPEOnStandardPrivacyEnabled(b.CurrentBlock().Number())) &&
+		privateTxArgs.PrivacyFlag.IsNotStandardPrivate() {
+		err = fmt.Errorf("PrivacyEnhancements are disabled while running in strict StandardPrivacy mode. Can only accept transactions with PrivacyFlag=0(StandardPrivate).")
+		return
+	}
 
 	if engine.PrivacyFlagMandatoryRecipients == privateTxArgs.PrivacyFlag && len(privateTxArgs.MandatoryRecipients) == 0 {
 		err = fmt.Errorf("missing mandatory recipients data. if no mandatory recipients required consider using PrivacyFlag=1(PartyProtection)")

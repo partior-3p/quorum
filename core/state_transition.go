@@ -467,6 +467,9 @@ func (st *StateTransition) SetTxPrivacyMetadata(pm *types.PrivacyMetadata) {
 func (st *StateTransition) IsPrivacyEnhancementsEnabled() bool {
 	return st.evm.ChainConfig().IsPrivacyEnhancementsEnabled(st.evm.Context.BlockNumber)
 }
+func (st *StateTransition) IsPEOnStandardPrivacyEnabled() bool {
+	return st.evm.ChainConfig().IsPEOnStandardPrivacyEnabled(st.evm.Context.BlockNumber)
+}
 func (st *StateTransition) RevertToSnapshot(snapshot int) {
 	st.evm.StateDB.RevertToSnapshot(snapshot)
 }
