@@ -90,6 +90,10 @@ func (c *contract) set(value int64) []byte {
 	return bytes
 }
 
+func newPBool(b bool) *bool {
+	return &b
+}
+
 func init() {
 	log.PrintOrigins(true)
 	log.Root().SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(true)))
@@ -172,39 +176,7 @@ func TestApplyMessage_Private_whenCreatePartyProtectionC1_Success(t *testing.T) 
 	mockPM.Verify(assert)
 }
 
-// Removing this check to allow a downgrade from enhanced privacy back to standard privacy
-// func TestApplyMessage_Private_whenCreatePartyProtectionC1WithPrivacyEnhancementsDisabledReturnsError(t *testing.T) {
-// 	originalP := private.P
-// 	defer func() { private.P = originalP }()
-// 	mockPM := newMockPrivateTransactionManager()
-// 	private.P = mockPM
-// 	assert := testifyassert.New(t)
-
-// 	// calling C1.Create party protection
-// 	cfg := newConfig().
-// 		setPrivacyFlag(engine.PrivacyFlagPartyProtection).
-// 		setData([]byte("arbitrary encrypted payload hash"))
-
-// 	gp := new(GasPool).AddGas(math.MaxUint64)
-// 	privateMsg := newTypicalPrivateMessage(cfg)
-
-// 	//since party protection create only get back privacyFlag
-// 	mockPM.When("Receive").Return(c1.create(big.NewInt(42)), &engine.ExtraMetadata{
-// 		PrivacyFlag: engine.PrivacyFlagPartyProtection,
-// 	}, nil)
-
-// 	evm := newEVM(cfg)
-// 	evm.ChainConfig().PrivacyEnhancementsBlock = nil
-// 	result, err := ApplyMessage(evm, privateMsg, gp)
-
-// 	assert.Error(err, "EVM execution")
-// 	assert.True(result.Failed(), "Transaction receipt status")
-// 	// check that there is no privacy metadata for the newly created contract
-// 	assert.Len(evm.CreatedContracts(), 0, "no contracts created")
-// 	mockPM.Verify(assert)
-// }
-
-func TestApplyMessage_Private_whenCreatePartyProtectionC1WithPrivacyEnhancementsDisabledDoesNotFail(t *testing.T) {
+func TestApplyMessage_Private_whenCreatePartyProtectionC1WithPrivacyEnhancementsDisabledReturnsError(t *testing.T) {
 	originalP := private.P
 	defer func() { private.P = originalP }()
 	mockPM := newMockPrivateTransactionManager()
@@ -228,10 +200,78 @@ func TestApplyMessage_Private_whenCreatePartyProtectionC1WithPrivacyEnhancements
 	evm.ChainConfig().PrivacyEnhancementsBlock = nil
 	result, err := ApplyMessage(evm, privateMsg, gp)
 
-	assert.Nil(err, "Error found")
-	assert.False(result.Failed(), "Transaction receipt status")
+	assert.Error(err, "EVM execution")
+	assert.True(result.Failed(), "Transaction receipt status")
 	// check that there is no privacy metadata for the newly created contract
-	assert.Len(evm.CreatedContracts(), 1, "one contract created")
+	assert.Len(evm.CreatedContracts(), 0, "no contracts created")
+	mockPM.Verify(assert)
+}
+
+func TestApplyMessage_Private_whenCreatePartyProtectionC1WithPrivacyEnhancementsDisabledAndSPUnsupportedReturnsError(t *testing.T) {
+	originalP := private.P
+	defer func() { private.P = originalP }()
+	mockPM := newMockPrivateTransactionManager()
+	private.P = mockPM
+	assert := testifyassert.New(t)
+
+	// calling C1.Create party protection
+	cfg := newConfig().
+		setPrivacyFlag(engine.PrivacyFlagPartyProtection).
+		setData([]byte("arbitrary encrypted payload hash"))
+
+	gp := new(GasPool).AddGas(math.MaxUint64)
+	privateMsg := newTypicalPrivateMessage(cfg)
+
+	//since party protection create only get back privacyFlag
+	mockPM.When("Receive").Return(c1.create(big.NewInt(42)), &engine.ExtraMetadata{
+		PrivacyFlag: engine.PrivacyFlagPartyProtection,
+	}, nil)
+
+	evm := newEVM(cfg)
+	evm.ChainConfig().PrivacyEnhancementsBlock = nil
+	evm.ChainConfig().Transitions = []params.Transition{
+		{Block: big.NewInt(0), PrivacyEnhancementsOnStandardPrivacyEnabled: newPBool(false)},
+	}
+	result, err := ApplyMessage(evm, privateMsg, gp)
+
+	assert.Error(err, "EVM execution")
+	assert.True(result.Failed(), "Transaction receipt status")
+	// check that there is no privacy metadata for the newly created contract
+	assert.Len(evm.CreatedContracts(), 0, "no contracts created")
+	mockPM.Verify(assert)
+}
+
+func TestApplyMessage_Private_whenCreatePartyProtectionC1WithPrivacyEnhancementsDisabledWhileStandardPrivacyIsSupported(t *testing.T) {
+	originalP := private.P
+	defer func() { private.P = originalP }()
+	mockPM := newMockPrivateTransactionManager()
+	private.P = mockPM
+	assert := testifyassert.New(t)
+
+	// calling C1.Create party protection
+	cfg := newConfig().
+		setPrivacyFlag(engine.PrivacyFlagPartyProtection).
+		setData([]byte("arbitrary encrypted payload hash"))
+
+	gp := new(GasPool).AddGas(math.MaxUint64)
+	privateMsg := newTypicalPrivateMessage(cfg)
+
+	//since party protection create only get back privacyFlag
+	mockPM.When("Receive").Return(c1.create(big.NewInt(42)), &engine.ExtraMetadata{
+		PrivacyFlag: engine.PrivacyFlagPartyProtection,
+	}, nil)
+
+	evm := newEVM(cfg)
+	evm.ChainConfig().PrivacyEnhancementsBlock = nil
+	evm.ChainConfig().Transitions = []params.Transition{
+		{Block: big.NewInt(0), PrivacyEnhancementsOnStandardPrivacyEnabled: newPBool(true)},
+	}
+
+	_, err := ApplyMessage(evm, privateMsg, gp)
+
+	assert.True(err == nil, "Transaction passed as expected")
+	// check that there is no privacy metadata for the newly created contract
+	assert.Len(evm.CreatedContracts(), 1, "Contracts was created")
 	mockPM.Verify(assert)
 }
 
