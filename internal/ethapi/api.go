@@ -2967,7 +2967,7 @@ func checkAndHandlePrivateTransaction(ctx context.Context, b Backend, tx *types.
 	if (!b.ChainConfig().IsPrivacyEnhancementsEnabled(b.CurrentBlock().Number()) &&
 		!b.ChainConfig().IsPEOnStandardPrivacyEnabled(b.CurrentBlock().Number())) &&
 		privateTxArgs.PrivacyFlag.IsNotStandardPrivate() {
-		err = fmt.Errorf("PrivacyEnhancements are disabled while running in strict StandardPrivacy mode. Can only accept transactions with PrivacyFlag=0(StandardPrivate).")
+		err = fmt.Errorf("PrivacyEnhancements are disabled. Can only accept transactions with PrivacyFlag=0(StandardPrivate).")
 		return
 	}
 
