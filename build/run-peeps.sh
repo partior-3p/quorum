@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if ! git clone https://github.com/ConsenSys/PEEPS.git
+if ! git clone https://github.com/partior-3p/PEEPS.git
 then
   cd PEEPS
   git reset --hard HEAD
