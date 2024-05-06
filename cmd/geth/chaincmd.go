@@ -270,6 +270,14 @@ func updateTransitions(ctx *cli.Context) error {
 		if !reflect.DeepEqual(storedcfg.Transitions, genesis.Config.Transitions) {
 			log.Info("Change found in transitions, proceeding to update chain config")
 			storedcfg.Transitions = genesis.Config.Transitions
+			// Check that transitions does not include enhance privacy block, else delete PrivacyEnhancementsBlock to prevent forking from allowing transitions to occur
+			for _, transition := range storedcfg.Transitions {
+				if transition.PrivacyEnhancementsEnabled != nil {
+					log.Info("Found privacy enhancement transitions, removing privacy enhancement block to prevent forking")
+					storedcfg.PrivacyEnhancementsBlock = nil
+					break
+				}
+			}
 			rawdb.WriteChainConfig(chaindb, stored, storedcfg)
 		} else {
 			log.Info("No change in transitions, no update required to chain config")
