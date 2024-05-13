@@ -891,7 +891,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// For the first two cases, the semi-finished work will be discarded.
 		// For the third case, the semi-finished work will be submitted to the consensus engine.
 		if interrupt != nil && atomic.LoadInt32(interrupt) != commitInterruptNone {
-			log.Info("Aborting transaction processing due to 'commitInterruptNewHead',", "elapsed time", time.Since(loopStartTime)) // Quorum
 			// Notify resubmit loop to increase resubmitting interval due to too frequent commits.
 			if atomic.LoadInt32(interrupt) == commitInterruptResubmit {
 				ratio := float64(w.current.header.GasLimit-w.current.gasPool.Gas()) / float64(w.current.header.GasLimit)
@@ -902,7 +901,9 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 					ratio: ratio,
 					inc:   true,
 				}
+				log.Info("Aborting transaction processing due to 'commitInterruptResubmit',", "elapsed time", time.Since(loopStartTime)) // Quorum
 			}
+			log.Info("Aborting transaction processing due to 'commitInterruptNewHead',", "elapsed time", time.Since(loopStartTime)) // Quorum
 			return atomic.LoadInt32(interrupt) == commitInterruptNewHead
 		}
 		// If we don't have enough gas for any further transactions then we're done
