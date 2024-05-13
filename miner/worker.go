@@ -79,6 +79,11 @@ const (
 	staleThreshold = 7
 )
 
+var (
+	errBlockInterruptedByNewHead  = errors.New("new head arrived while building block")
+	errBlockInterruptedByRecommit = errors.New("recommit interrupt while building block")
+)
+
 // environment is the worker's current environment and holds all of the current state information.
 type environment struct {
 	signer types.Signer
@@ -98,6 +103,16 @@ type environment struct {
 	privateReceipts  []*types.Receipt
 	privateStateRepo mps.PrivateStateRepository
 	// End Quorum
+}
+
+// discard terminates the background prefetcher go-routine. It should
+// always be called for all created environment instances otherwise
+// the go-routine leak can happen.
+func (env *environment) discard() {
+	if env.state == nil {
+		return
+	}
+	env.state.StopPrefetcher()
 }
 
 // task contains all information for consensus engine sealing and result submitting.
@@ -463,6 +478,11 @@ func (w *worker) mainLoop() {
 	defer w.txsSub.Unsubscribe()
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
+	defer func() {
+		if w.current != nil {
+			w.current.discard()
+		}
+	}()
 
 	for {
 		select {
@@ -870,10 +890,10 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	return logs, nil
 }
 
-func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) bool {
+func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coinbase common.Address, interrupt *int32) error {
 	// Short circuit if current is nil
 	if w.current == nil {
-		return true
+		return nil
 	}
 
 	if w.current.gasPool == nil {
@@ -891,7 +911,6 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		// For the first two cases, the semi-finished work will be discarded.
 		// For the third case, the semi-finished work will be submitted to the consensus engine.
 		if interrupt != nil && atomic.LoadInt32(interrupt) != commitInterruptNone {
-			log.Info("Aborting transaction processing due to 'commitInterruptNewHead',", "elapsed time", time.Since(loopStartTime)) // Quorum
 			// Notify resubmit loop to increase resubmitting interval due to too frequent commits.
 			if atomic.LoadInt32(interrupt) == commitInterruptResubmit {
 				ratio := float64(w.current.header.GasLimit-w.current.gasPool.Gas()) / float64(w.current.header.GasLimit)
@@ -902,8 +921,11 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 					ratio: ratio,
 					inc:   true,
 				}
+				log.Info("Aborting transaction processing due to 'commitInterruptResubmit',", "elapsed time", time.Since(loopStartTime)) // Quorum
+				return errBlockInterruptedByRecommit
 			}
-			return atomic.LoadInt32(interrupt) == commitInterruptNewHead
+			log.Info("Aborting transaction processing due to 'commitInterruptNewHead',", "elapsed time", time.Since(loopStartTime)) // Quorum
+			return errBlockInterruptedByNewHead
 		}
 		// If we don't have enough gas for any further transactions then we're done
 		if w.current.gasPool.Gas() < params.TxGas {
@@ -985,7 +1007,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 	if interrupt != nil {
 		w.resubmitAdjustCh <- &intervalAdjust{inc: false}
 	}
-	return false
+	return nil
 }
 
 // commitNewWork generates several new sealing tasks based on the parent block.
@@ -1098,13 +1120,15 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	}
 	if len(localTxs) > 0 {
 		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
-		if w.commitTransactions(txs, w.coinbase, interrupt) {
+		if err := w.commitTransactions(txs, w.coinbase, interrupt); err == errBlockInterruptedByNewHead {
+			w.current.discard()
 			return
 		}
 	}
 	if len(remoteTxs) > 0 {
 		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, remoteTxs)
-		if w.commitTransactions(txs, w.coinbase, interrupt) {
+		if err := w.commitTransactions(txs, w.coinbase, interrupt); err == errBlockInterruptedByNewHead {
+			w.current.discard()
 			return
 		}
 	}
