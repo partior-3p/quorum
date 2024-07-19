@@ -18,7 +18,6 @@
 package utils
 
 import (
-	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,6 +36,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/cmd/utils/nodekey"
+	"github.com/ethereum/go-ethereum/cmd/utils/nodekey/constants"
+	"github.com/ethereum/go-ethereum/cmd/utils/nodekey/fetcher"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	http2 "github.com/ethereum/go-ethereum/common/http"
@@ -48,7 +50,6 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
@@ -680,6 +681,16 @@ var (
 		Usage: "Comma separated enode URLs for P2P discovery bootstrap",
 		Value: "",
 	}
+	NodeKeySource = cli.StringFlag{
+		Name:  "nodekeysource",
+		Usage: "P2P node key source (file|vault-kv)",
+		Value: "file",
+	}
+	NodeKeyDecryption = cli.StringFlag{
+		Name:  "nodekeydecryption",
+		Usage: "P2P node key decryption scheme (none|vault-tse)",
+		Value: "none",
+	}
 	NodeKeyFileFlag = cli.StringFlag{
 		Name:  "nodekey",
 		Usage: "P2P node key file",
@@ -1100,25 +1111,28 @@ func MakeDataDir(ctx *cli.Context) string {
 // method returns nil and an emphemeral key is to be generated.
 func setNodeKey(ctx *cli.Context, cfg *p2p.Config) {
 	var (
-		hex  = ctx.GlobalString(NodeKeyHexFlag.Name)
-		file = ctx.GlobalString(NodeKeyFileFlag.Name)
-		key  *ecdsa.PrivateKey
-		err  error
+		source           = ctx.GlobalString(NodeKeySource.Name)
+		hex              = ctx.GlobalString(NodeKeyHexFlag.Name)
+		file             = ctx.GlobalString(NodeKeyFileFlag.Name)
+		decryptionScheme = ctx.GlobalString(NodeKeyDecryption.Name)
+		config           []byte
+		nodeKeyMgr       *nodekey.Manager
+		err              error
 	)
+
+	// create the appropriate configurations for the nodekey manager
 	switch {
-	case file != "" && hex != "":
-		Fatalf("Options %q and %q are mutually exclusive", NodeKeyFileFlag.Name, NodeKeyHexFlag.Name)
-	case file != "":
-		if key, err = crypto.LoadECDSA(file); err != nil {
-			Fatalf("Option %q: %v", NodeKeyFileFlag.Name, err)
+	case source == constants.SourceFile:
+		config, err = json.Marshal(fetcher.FileConfigData{Hex: hex, File: file})
+		if err != nil {
+			Fatalf("cannot parse configurations for nodekey file fetcher")
 		}
-		cfg.PrivateKey = key
-	case hex != "":
-		if key, err = crypto.HexToECDSA(hex); err != nil {
-			Fatalf("Option %q: %v", NodeKeyHexFlag.Name, err)
-		}
-		cfg.PrivateKey = key
+	default:
+		Fatalf("invalid node key source")
 	}
+
+	nodeKeyMgr = nodekey.NewManager(source, decryptionScheme, config)
+	cfg.PrivateKey = nodeKeyMgr.GetNodeKey(false)
 }
 
 // setNodeUserIdent creates the user identifier from CLI flags.
