@@ -2,67 +2,67 @@ package fetcher
 
 import (
 	"crypto/ecdsa"
-	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 
-	"github.com/ethereum/go-ethereum/cmd/utils/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/p2p/nodekey"
+	"github.com/naoina/toml"
 )
 
 type NodeKeyFileFetcher struct {
-	config FileConfigData
+	config nodekey.FileConfig
 }
 
-type FileConfigData struct {
-	Hex  string `json:"hex,omitempty"`
-	File string `json:"file,omitempty"`
-}
-
-func NewNodeKeyFileFetcher(configBytes []byte) *NodeKeyFileFetcher {
-	var data FileConfigData
-	if err := json.Unmarshal(configBytes, &data); err != nil {
-		common.Fatalf("invalid configuration passed: %v", err)
+func NewNodeKeyFileFetcher(configBytes []byte) (*NodeKeyFileFetcher, error) {
+	var data nodekey.FileConfig
+	if err := toml.Unmarshal(configBytes, &data); err != nil {
+		return nil, fmt.Errorf("invalid configuration passed: %w", err)
 	}
 
 	return &NodeKeyFileFetcher{
 		data,
-	}
+	}, nil
 }
 
-func (mgr *NodeKeyFileFetcher) FetchNodeKey() *ecdsa.PrivateKey {
+func (mgr *NodeKeyFileFetcher) FetchNodeKey() (*ecdsa.PrivateKey, error) {
 	var (
 		key *ecdsa.PrivateKey
 		err error
 	)
 	switch {
 	case mgr.config.File != "" && mgr.config.Hex != "":
-		common.Fatalf("Options %q and %q are mutually exclusive", mgr.config.File, mgr.config.Hex)
+		return nil, fmt.Errorf("options %q and %q are mutually exclusive", mgr.config.File, mgr.config.Hex)
 	case mgr.config.File != "":
 		if key, err = crypto.LoadECDSA(mgr.config.File); err != nil {
-			common.Fatalf("Option %q: %v", mgr.config.File, err)
+			return nil, fmt.Errorf("option %q: %w", mgr.config.File, err)
 		}
-		return key
+		return key, nil
 	case mgr.config.Hex != "":
 		if key, err = crypto.HexToECDSA(mgr.config.Hex); err != nil {
-			common.Fatalf("Option %q: %v", mgr.config.Hex, err)
+			return nil, fmt.Errorf("option %q: %w", mgr.config.Hex, err)
 		}
-		return key
+		return key, nil
+	default:
+		// autogenerate node key if no configurations are provided
+		return nil, nil
 	}
-	return nil
 }
 
-func (mgr *NodeKeyFileFetcher) FetchEncryptedNodeKey() string {
+func (mgr *NodeKeyFileFetcher) FetchEncryptedNodeKey() (string, error) {
 	switch {
 	case mgr.config.File != "" && mgr.config.Hex != "":
-		common.Fatalf("Options %q and %q are mutually exclusive", mgr.config.File, mgr.config.Hex)
+		return "", fmt.Errorf("Options %q and %q are mutually exclusive", mgr.config.File, mgr.config.Hex)
 	case mgr.config.File != "":
 		b, err := os.ReadFile(mgr.config.File)
 		if err != nil {
-			common.Fatalf("Option %q: %v", mgr.config.File, err)
+			return "", fmt.Errorf("Option %q: %w", mgr.config.File, err)
 		}
-		return string(b)
+		return string(b), nil
 	case mgr.config.Hex != "":
-		return mgr.config.Hex
+		return mgr.config.Hex, nil
+	default:
+		return "", errors.New("unable to fetch file-based encrypted node key")
 	}
-	return ""
 }

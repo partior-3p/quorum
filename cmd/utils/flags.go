@@ -38,7 +38,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils/nodekey"
 	"github.com/ethereum/go-ethereum/cmd/utils/nodekey/constants"
-	"github.com/ethereum/go-ethereum/cmd/utils/nodekey/fetcher"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	http2 "github.com/ethereum/go-ethereum/common/http"
@@ -80,6 +79,7 @@ import (
 	"github.com/ethereum/go-ethereum/private"
 	"github.com/ethereum/go-ethereum/raft"
 	pcsclite "github.com/gballet/go-libpcsclite"
+	"github.com/naoina/toml"
 	gopsutil "github.com/shirou/gopsutil/mem"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -1109,7 +1109,7 @@ func MakeDataDir(ctx *cli.Context) string {
 // setNodeKey creates a node key from set command line flags, either loading it
 // from a file or as a specified hex value. If neither flags were provided, this
 // method returns nil and an emphemeral key is to be generated.
-func setNodeKey(ctx *cli.Context, cfg *p2p.Config) {
+func setNodeKey(ctx *cli.Context, cfg *p2p.Config) error {
 	var (
 		source           = ctx.GlobalString(NodeKeySource.Name)
 		hex              = ctx.GlobalString(NodeKeyHexFlag.Name)
@@ -1123,16 +1123,38 @@ func setNodeKey(ctx *cli.Context, cfg *p2p.Config) {
 	// create the appropriate configurations for the nodekey manager
 	switch {
 	case source == constants.SourceFile:
-		config, err = json.Marshal(fetcher.FileConfigData{Hex: hex, File: file})
+		// backwards compatibility to support cli flag configurations for file based node key
+		if hex != "" {
+			cfg.NodeKey.ConfigFile.Hex = hex
+		}
+		if file != "" {
+			cfg.NodeKey.ConfigFile.File = file
+		}
+		config, err = toml.Marshal(cfg.NodeKey.ConfigFile)
 		if err != nil {
-			Fatalf("cannot parse configurations for nodekey file fetcher")
+			return fmt.Errorf("cannot parse configurations for nodekey file fetcher: %w", err)
+		}
+	case source == constants.SourceVaultKv:
+		config, err = toml.Marshal(cfg.NodeKey.ConfigVault)
+		if err != nil {
+			return fmt.Errorf("cannot parse configurations for nodekey vault fetcher: %w", err)
 		}
 	default:
-		Fatalf("invalid node key source")
+		return fmt.Errorf("invalid node key source [%s]", source)
 	}
 
-	nodeKeyMgr = nodekey.NewManager(source, decryptionScheme, config)
-	cfg.PrivateKey = nodeKeyMgr.GetNodeKey(false)
+	nodeKeyMgr, err = nodekey.NewManager(source, decryptionScheme, config)
+	if err != nil {
+		return err
+	}
+
+	isEncrypted := decryptionScheme != constants.DecryptionNone
+	privateKey, err := nodeKeyMgr.GetNodeKey(isEncrypted)
+	if err != nil {
+		return err
+	}
+	cfg.PrivateKey = privateKey
+	return nil
 }
 
 // setNodeUserIdent creates the user identifier from CLI flags.
@@ -1451,7 +1473,9 @@ func MakePasswordList(ctx *cli.Context) []string {
 }
 
 func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
-	setNodeKey(ctx, cfg)
+	if err := setNodeKey(ctx, cfg); err != nil {
+		Fatalf(err.Error())
+	}
 	setNAT(ctx, cfg)
 	setListenAddress(ctx, cfg)
 	setBootstrapNodes(ctx, cfg)
@@ -1524,7 +1548,9 @@ func SetP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
 }
 
 func SetQP2PConfig(ctx *cli.Context, cfg *p2p.Config) {
-	setNodeKey(ctx, cfg)
+	if err := setNodeKey(ctx, cfg); err != nil {
+		Fatalf(err.Error())
+	}
 	//setNAT(ctx, cfg)
 	cfg.NAT = nil
 	if ctx.GlobalIsSet(QuorumLightServerP2PListenPortFlag.Name) {

@@ -39,6 +39,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/p2p/nat"
 	"github.com/ethereum/go-ethereum/p2p/netutil"
+	"github.com/ethereum/go-ethereum/p2p/nodekey"
 	"github.com/ethereum/go-ethereum/permission/core"
 )
 
@@ -154,6 +155,9 @@ type Config struct {
 	EnableMsgEvents bool
 
 	EnableNodePermission bool `toml:",omitempty"`
+
+	// Configuration used to retrieve node key
+	NodeKey nodekey.NodeKeyConfig `toml:",omitempty"`
 
 	DataDir string `toml:",omitempty"`
 	// Logger is a custom logger to use with the p2p.Server.
