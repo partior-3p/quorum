@@ -2,18 +2,16 @@ package decrypter
 
 import (
 	"crypto/ecdsa"
-
-	"github.com/ethereum/go-ethereum/cmd/utils/common"
+	"errors"
 )
 
 // default decrypter have no decryption capabilities
 type NodeKeyDefaultDecrypter struct{}
 
-func NewNodeKeyDefaultDecrypter(configBytes []byte) *NodeKeyDefaultDecrypter {
-	return &NodeKeyDefaultDecrypter{}
+func NewNodeKeyDefaultDecrypter(configBytes []byte) (*NodeKeyDefaultDecrypter, error) {
+	return &NodeKeyDefaultDecrypter{}, nil
 }
 
-func (d *NodeKeyDefaultDecrypter) DecryptNodeKey(data string) *ecdsa.PrivateKey {
-	common.Fatalf("default decrypter cannot perform decryption")
-	return nil
+func (d *NodeKeyDefaultDecrypter) DecryptNodeKey(data string) (*ecdsa.PrivateKey, error) {
+	return nil, errors.New("default decrypter cannot perform decryption")
 }
