@@ -145,6 +145,8 @@ func TestFlagsConfig(t *testing.T) {
 		utils.BootnodesFlag,
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
+		utils.NodeKeySource,
+		utils.NodeKeyDecryption,
 		utils.NATFlag,
 		utils.NoDiscoverFlag,
 		utils.DiscoveryV5Flag,
@@ -199,7 +201,7 @@ func TestFlagsConfig(t *testing.T) {
 		utils.QuorumPTMTlsClientKeyFlag,
 		utils.QuorumPTMTlsInsecureSkipVerify,
 	}
-	nodeKeyFile, err := ioutil.TempFile("/tmp", "nodekey")
+	nodeKeyFile, err := os.CreateTemp("/tmp", "nodekey")
 	require.NoError(t, err)
 	defer os.Remove(nodeKeyFile.Name())
 
@@ -232,6 +234,10 @@ func TestFlagsConfig(t *testing.T) {
 				set.String(f.Name, "127.0.0.0/16, 23.23.23.23/24,", f.Usage) // TOML problem
 			case utils.AuthorizationListFlag:
 				set.String(f.Name, "1=0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF,2=0x0123456789ABCDEF0123456789ABCDE00123456789ABCDEF0123456789ABCDEF", f.Usage)
+			case utils.NodeKeySource:
+				set.String(f.Name, "file", f.Usage)
+			case utils.NodeKeyDecryption:
+				set.String(f.Name, "none", f.Usage)
 			default:
 				set.String(f.Name, f.Value+"_custom", f.Usage)
 			}
@@ -265,7 +271,7 @@ func TestFlagsConfig(t *testing.T) {
 
 	ctx := cli.NewContext(app, set, nil)
 
-	out, err := ioutil.TempFile("/tmp", "gethCfg")
+	out, err := os.CreateTemp("/tmp", "gethCfg")
 	require.NoError(t, err)
 	defer out.Close()
 	defer os.Remove(out.Name())
@@ -452,7 +458,7 @@ func removeComment(name string) (*os.File, error) {
 }
 
 func TestLoadAndDumpGethConfig(t *testing.T) {
-	out, err := ioutil.TempFile("/tmp", "gethCfg")
+	out, err := os.CreateTemp("/tmp", "gethCfg")
 	require.NoError(t, err)
 	defer out.Close()
 	_, err = out.WriteString(`[Eth]
@@ -546,6 +552,25 @@ TrustedNodes = []
 NetRestrict = ["127.0.0.0/16", "23.23.23.0/24"]
 ListenAddr = ":30303"
 EnableMsgEvents = false
+
+[Node.P2P.NodeKey.ConfigVault]
+Url = "http://127.0.0.1"
+KvMount = "kv"
+KvPath = "test-storage"
+KvFetchKey = "nodekey"
+KvVersion = "v2"
+TseMount = "transit"
+TseKeyName = "my-key"
+Token = "tmp.token.abcdefg"
+AppRoleId = "tmp-app-role-id"
+AppRoleSecret = "tmp-app-role-secret"
+AppRolePath = "approle"
+Namespace = ""
+VaultTlsServerCertPath = ""
+
+[Node.P2P.NodeKey.ConfigFile]
+Hex = "68b1d06cb4054d40344d138e1b7b638e81b39a209e537b673357939ed4c70392"
+File = ""
 
 [Node.HTTPTimeouts]
 ReadTimeout = 30000000000
@@ -678,6 +703,26 @@ func testConfig(t *testing.T, cfg *gethConfig) {
 	assert.Equal(t, time.Duration(30000000000), httpTimeouts.ReadTimeout)
 	assert.Equal(t, time.Duration(30000000000), httpTimeouts.WriteTimeout)
 	assert.Equal(t, time.Duration(120000000000), httpTimeouts.IdleTimeout)
+
+	// Quorum
+	// [Node.P2P.NodeKey.ConfigVault]
+	assert.Equal(t, "http://127.0.0.1", p2p.NodeKey.ConfigVault.Url)
+	assert.Equal(t, "kv", p2p.NodeKey.ConfigVault.KvMount)
+	assert.Equal(t, "test-storage", p2p.NodeKey.ConfigVault.KvPath)
+	assert.Equal(t, "v2", p2p.NodeKey.ConfigVault.KvVersion)
+	assert.Equal(t, "nodekey", p2p.NodeKey.ConfigVault.KvFetchKey)
+	assert.Equal(t, "transit", p2p.NodeKey.ConfigVault.TseMount)
+	assert.Equal(t, "my-key", p2p.NodeKey.ConfigVault.TseKeyName)
+	assert.Equal(t, "tmp.token.abcdefg", p2p.NodeKey.ConfigVault.Token)
+	assert.Equal(t, "tmp-app-role-id", p2p.NodeKey.ConfigVault.AppRoleId)
+	assert.Equal(t, "tmp-app-role-secret", p2p.NodeKey.ConfigVault.AppRoleSecret)
+	assert.Equal(t, "", p2p.NodeKey.ConfigVault.Namespace)
+	assert.Equal(t, "", p2p.NodeKey.ConfigVault.VaultTlsServerCertPath)
+
+	// [Node.P2P.NodeKey.ConfigFile]
+	assert.Equal(t, "68b1d06cb4054d40344d138e1b7b638e81b39a209e537b673357939ed4c70392", p2p.NodeKey.ConfigFile.Hex)
+	assert.Equal(t, "", p2p.NodeKey.ConfigFile.File)
+	// End Quorum
 
 	// QUORUM
 	// [Eth.Quorum.Istanbul]
