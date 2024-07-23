@@ -18,8 +18,11 @@
 package utils
 
 import (
+	"encoding/hex"
 	"flag"
-	"io/ioutil"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"reflect"
@@ -28,8 +31,12 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/node"
+	"github.com/ethereum/go-ethereum/p2p"
+	"github.com/ethereum/go-ethereum/p2p/nodekey"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/urfave/cli.v1"
@@ -106,7 +113,7 @@ func TestSetImmutabilityThreshold(t *testing.T) {
 }
 
 func TestSetPlugins_whenTypical(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "q-")
+	tmpDir, err := os.MkdirTemp("", "q-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +121,7 @@ func TestSetPlugins_whenTypical(t *testing.T) {
 		_ = os.RemoveAll(tmpDir)
 	}()
 	arbitraryJSONFile := path.Join(tmpDir, "arbitary.json")
-	if err := ioutil.WriteFile(arbitraryJSONFile, []byte("{}"), 0644); err != nil {
+	if err := os.WriteFile(arbitraryJSONFile, []byte("{}"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	arbitraryNodeConfig := &node.Config{}
@@ -206,4 +213,101 @@ func TestQuorumConfigFlags(t *testing.T) {
 	assert.Equal(t, uint64(34), config.BlockPeriod, "IstanbulBlockPeriodFlag value is incorrect")
 	assert.Equal(t, uint64(0), config.EmptyBlockPeriod, "IstanbulEmptyBlockPeriodFlag value is incorrect")
 	assert.Equal(t, true, arbitraryEthConfig.RaftMode, "RaftModeFlag value is incorrect")
+}
+
+func TestP2PNodeKeyFromFileConfigFlags(t *testing.T) {
+	fs := &flag.FlagSet{}
+	arbitraryCLIContext := cli.NewContext(nil, fs, nil)
+
+	arbitraryP2PConfig := &p2p.Config{
+		NodeKey: nodekey.NodeKeyConfig{
+			ConfigFile: nodekey.FileConfig{
+				Hex: "68b1d06cb4054d40344d138e1b7b638e81b39a209e537b673357939ed4c70392",
+			},
+		},
+	}
+	fs.String(NodeKeyDecryption.Name, "none", "")
+	assert.NoError(t, arbitraryCLIContext.GlobalSet(NodeKeyDecryption.Name, "none"))
+	fs.String(NodeKeySource.Name, "file", "")
+	assert.NoError(t, arbitraryCLIContext.GlobalSet(NodeKeySource.Name, "file"))
+
+	// test that user is able to pass in private key or private key path to config toml file
+	require.NoError(t, setNodeKey(arbitraryCLIContext, arbitraryP2PConfig))
+
+	// default behavior is to set private key to nil
+	arbitraryP2PConfig = &p2p.Config{}
+	require.NoError(t, setNodeKey(arbitraryCLIContext, arbitraryP2PConfig))
+}
+
+func TestP2PNodeKeyFromVaultConfigFlags(t *testing.T) {
+	fs := &flag.FlagSet{}
+	arbitraryCLIContext := cli.NewContext(nil, fs, nil)
+
+	arbitraryP2PConfig := &p2p.Config{
+		NodeKey: nodekey.NodeKeyConfig{
+			ConfigFile: nodekey.FileConfig{
+				Hex: "68b1d06cb4054d40344d138e1b7b638e81b39a209e537b673357939ed4c70392",
+			},
+		},
+	}
+	fs.String(NodeKeyDecryption.Name, "none", "")
+	assert.NoError(t, arbitraryCLIContext.GlobalSet(NodeKeyDecryption.Name, "none"))
+	fs.String(NodeKeySource.Name, "file", "")
+	assert.NoError(t, arbitraryCLIContext.GlobalSet(NodeKeySource.Name, "vault-kv"))
+
+	// test that error is returned if vault configurations are not passed into config toml file and cli selects vault-kv as source
+	require.ErrorContains(t, setNodeKey(arbitraryCLIContext, arbitraryP2PConfig), "invalid kv version configuration passed, only accepts (v1|v2)")
+
+	arbitraryP2PConfig = &p2p.Config{
+		NodeKey: nodekey.NodeKeyConfig{
+			ConfigVault: nodekey.VaultConfig{
+				KvVersion: "v2",
+			},
+		},
+	}
+	require.ErrorContains(t, setNodeKey(arbitraryCLIContext, arbitraryP2PConfig), "need to specify default key to retrieve data from kv store")
+
+	arbitraryP2PConfig = &p2p.Config{
+		NodeKey: nodekey.NodeKeyConfig{
+			ConfigVault: nodekey.VaultConfig{
+				KvVersion:  "v2",
+				KvFetchKey: "nodekey",
+				KvPath:     "test-user/nodekey",
+				KvMount:    "kv",
+			},
+		},
+	}
+	require.ErrorContains(t, setNodeKey(arbitraryCLIContext, arbitraryP2PConfig), "need to specify vault url")
+
+	// test fetching node key from kv store
+	kvFetchKey := "nodekey"
+	kvPath := "test-user/nodekey"
+	privateKey := "68b1d06cb4054d40344d138e1b7b638e81b39a209e537b673357939ed4c70392"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/auth/approle/login" {
+			w.WriteHeader(http.StatusOK)
+			mockResponse, _ := hex.DecodeString("7b22726571756573745f6964223a2230663230393038662d326164302d313538352d383762612d666462336332396436663537222c226c656173655f6964223a22222c2272656e657761626c65223a66616c73652c226c656173655f6475726174696f6e223a302c2264617461223a6e756c6c2c22777261705f696e666f223a6e756c6c2c227761726e696e6773223a6e756c6c2c2261757468223a7b22636c69656e745f746f6b656e223a226876622e4141414141514b4e41355f33616c4152334634736b4631445f695a6f76344759384e794c51492d4f7543372d4d77795f5438717068336f7777427756553367546d6f69575476383551764267385956355f67613870593630466957514e625a65514272545f483258467a637049784d3767707631516a79516a37464872636436794a7a7345594a554b6c76343844367a6f5138452d34446949693031635574396f5f414f574269325241544b54554271777552503847316541636f31446f733044797054594e5a6457336f744651323630703776624c71444c6d74524f67222c226163636573736f72223a22222c22706f6c6963696573223a5b2261646d696e222c2264656661756c74225d2c22746f6b656e5f706f6c6963696573223a5b2261646d696e222c2264656661756c74225d2c226d65746164617461223a7b22726f6c655f6e616d65223a2261646d696e2d726f6c65227d2c226c656173655f6475726174696f6e223a323539323030302c2272656e657761626c65223a66616c73652c22656e746974795f6964223a2262653038653864642d636263352d373239332d613631372d386131666263336338333039222c22746f6b656e5f74797065223a226261746368222c226f727068616e223a747275652c226d66615f726571756972656d656e74223a6e756c6c2c226e756d5f75736573223a307d2c226d6f756e745f74797065223a22227d0a")
+			w.Write(mockResponse)
+			return
+		}
+
+		if r.URL.Path == fmt.Sprintf("/v1/kv-v2/data/%s", kvPath) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(fmt.Sprintf(`{"Data": {"data": {"%s": "%s"}}}`, kvFetchKey, privateKey)))
+			return
+		}
+	}))
+	arbitraryP2PConfig = &p2p.Config{
+		NodeKey: nodekey.NodeKeyConfig{
+			ConfigVault: nodekey.VaultConfig{
+				KvVersion:   "v2",
+				KvFetchKey:  kvFetchKey,
+				KvPath:      kvPath,
+				Url:         server.URL,
+				AppRolePath: "approle",
+			},
+		},
+	}
+	require.NoError(t, setNodeKey(arbitraryCLIContext, arbitraryP2PConfig))
+	require.Equal(t, hexutil.Encode(crypto.FromECDSA(arbitraryP2PConfig.PrivateKey))[2:], privateKey)
 }
