@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
 	"golang.org/x/crypto/sha3"
@@ -330,6 +331,12 @@ func (e *Engine) Seal(chain consensus.ChainHeaderReader, block *types.Block, val
 	number := header.Number.Uint64()
 
 	if _, v := validators.GetByAddress(e.signer); v == nil {
+		addresses := make([]string, len(validators.List()))
+		for i, validator := range validators.List() {
+			addresses[i] = validator.Address().String()
+		}	
+		log.Warn("Engine signer (sealing) is not part of validator set", "signer", e.signer, "validators", validators)
+
 		return block, istanbulcommon.ErrUnauthorized
 	}
 

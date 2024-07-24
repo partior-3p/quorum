@@ -65,5 +65,12 @@ func CheckValidatorSignature(valSet ValidatorSet, data []byte, sig []byte) (comm
 		return val.Address(), nil
 	}
 
+	// 3. Log signer that is missing in validator set
+	addresses := make([]string, len(valSet.List()))
+	for i, validator := range valSet.List() {
+		addresses[i] = validator.Address().String()
+	}	
+	log.Warn("Signer is missing from validator set", "signer", signer, "validatorSet", addresses)
+
 	return common.Address{}, ErrUnauthorizedAddress
 }
