@@ -332,7 +332,7 @@ func (e *Engine) Seal(chain consensus.ChainHeaderReader, block *types.Block, val
 	number := header.Number.Uint64()
 
 	if _, v := validators.GetByAddress(e.signer); v == nil {
-		log.Warn("Engine signer (sealing) is not part of validator set", "signer", e.signer, "validators", fmt.Sprintf("%v", validators.List()))
+		log.Debug("Engine signer (sealing) is not part of validator set", "signer", e.signer, "validators", fmt.Sprintf("%v", validators.List()))
 
 		return block, istanbulcommon.ErrUnauthorized
 	}
