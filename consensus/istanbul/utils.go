@@ -17,6 +17,7 @@
 package istanbul
 
 import (
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -66,11 +67,7 @@ func CheckValidatorSignature(valSet ValidatorSet, data []byte, sig []byte) (comm
 	}
 
 	// 3. Log signer that is missing in validator set
-	addresses := make([]string, len(valSet.List()))
-	for i, validator := range valSet.List() {
-		addresses[i] = validator.Address().String()
-	}	
-	log.Warn("Signer is missing from validator set", "signer", signer, "validatorSet", addresses)
+	log.Warn("Signer is missing from validator set", "signer", signer, "valSet", fmt.Sprintf("%v", valSet.List()))
 
 	return common.Address{}, ErrUnauthorizedAddress
 }
