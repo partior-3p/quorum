@@ -75,7 +75,6 @@ test_histogram {quantile="0.99"} 0
 test_histogram {quantile="0.999"} 0
 test_histogram {quantile="0.9999"} 0
 test_histogram_count 0
-
 test_histogram_sum 0
 
 # TYPE test_meter gauge
@@ -89,15 +88,13 @@ test_timer {quantile="0.99"} 1.2e+08
 test_timer {quantile="0.999"} 1.2e+08
 test_timer {quantile="0.9999"} 1.2e+08
 test_timer_count 6
-
-test_timer_sum 230000000
+test_timer_sum 0
 
 # TYPE test_resetting_timer summary
 test_resetting_timer {quantile="0.50"} 12000000
 test_resetting_timer {quantile="0.95"} 120000000
 test_resetting_timer {quantile="0.99"} 120000000
 test_resetting_timer_count 6
-
 test_resetting_timer_sum 0
 
 `

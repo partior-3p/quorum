@@ -65,8 +65,7 @@ func (c *collector) addHistogram(name string, m metrics.Histogram) {
 	for i := range pv {
 		c.writeSummaryPercentile(name, strconv.FormatFloat(pv[i], 'f', -1, 64), ps[i])
 	}
-	c.writeSummaryCounter(name, m.Count())
-	c.writeSummarySum(name, m.Sum())
+	c.writeSummaryCounterAndSum(name, m.Count())
 }
 
 func (c *collector) addMeter(name string, m metrics.Meter) {
@@ -80,8 +79,7 @@ func (c *collector) addTimer(name string, m metrics.Timer) {
 	for i := range pv {
 		c.writeSummaryPercentile(name, strconv.FormatFloat(pv[i], 'f', -1, 64), ps[i])
 	}
-	c.writeSummaryCounter(name, m.Count())
-	c.writeSummarySum(name, m.Sum())
+	c.writeSummaryCounterAndSum(name, m.Count())
 }
 
 func (c *collector) addResettingTimer(name string, m metrics.ResettingTimer) {
@@ -94,8 +92,7 @@ func (c *collector) addResettingTimer(name string, m metrics.ResettingTimer) {
 	c.writeSummaryPercentile(name, "0.50", ps[0])
 	c.writeSummaryPercentile(name, "0.95", ps[1])
 	c.writeSummaryPercentile(name, "0.99", ps[2])
-	c.writeSummaryCounter(name, len(val))
-	c.writeSummarySum(name, 0)
+	c.writeSummaryCounterAndSum(name, len(val))
 }
 
 func (c *collector) writeGaugeCounter(name string, value interface{}) {
@@ -104,9 +101,19 @@ func (c *collector) writeGaugeCounter(name string, value interface{}) {
 	c.buff.WriteString(fmt.Sprintf(keyValueTpl, name, value))
 }
 
+func (c *collector) writeSummaryCounterAndSum(name string, countValue interface{}) {
+	// https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/
+	// The quantile label on non-suffixed metrics is used to identify quantile points in summary metrics. Each Prometheus line produces one quantile on the resulting summary.
+	// Lines with _count and _sum suffixes are used to determine the summary’s count and sum.
+	// If _count is not present, the metric MUST be dropped.
+	// If _sum is not present, the summary’s sum MUST be set to zero.
+	c.writeSummaryCounter(name, countValue)
+	c.writeSummarySum(name, 0)
+}
+
 func (c *collector) writeSummaryCounter(name string, value interface{}) {
 	name = mutateKey(name + "_count")
-	c.buff.WriteString(fmt.Sprintf(keyValueTpl, name, value))
+	c.buff.WriteString(fmt.Sprintf("%s %v\n", name, value))
 }
 
 func (c *collector) writeSummarySum(name string, value interface{}) {
