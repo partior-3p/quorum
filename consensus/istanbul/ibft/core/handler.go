@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/istanbul"
 	istanbulcommon "github.com/ethereum/go-ethereum/consensus/istanbul/common"
 	ibfttypes "github.com/ethereum/go-ethereum/consensus/istanbul/ibft/types"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Start implements core.Engine.Start
@@ -206,4 +207,20 @@ func (c *core) handleTimeoutMsg() {
 	} else {
 		c.sendNextRoundChange()
 	}
+}
+
+func (c *core) currentLogger(state bool) log.Logger {
+	logCtx := []interface{}{}
+	if c.current != nil {
+		logCtx = append(logCtx,
+			"current.round", c.current.Round().Uint64(),
+			"current.sequence", c.current.Sequence().Uint64(),
+		)
+	}
+
+	if state {
+		logCtx = append(logCtx, "state", c.state)
+	}
+
+	return c.logger.New(logCtx...)
 }
