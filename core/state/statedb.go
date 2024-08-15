@@ -75,7 +75,7 @@ type StateDB struct {
 	snapAccounts  map[common.Hash][]byte
 	snapStorage   map[common.Hash]map[common.Hash][]byte
 
-	mutex        sync.Mutex
+	mutex        sync.RWMutex
 	journalMutex sync.Mutex
 
 	// Quorum - a trie to hold extra account information that cannot be stored in the accounts trie
@@ -203,6 +203,9 @@ func (s *StateDB) Error() error {
 
 func (s *StateDB) AddLog(log *types.Log) {
 	s.journal.append(addLogChange{txhash: s.thash})
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	log.TxHash = s.thash
 	log.BlockHash = s.bhash
@@ -833,7 +836,8 @@ func (s *StateDB) Copy() *StateDB {
 		accountExtraDataTrie: s.db.CopyTrie(s.accountExtraDataTrie),
 	}
 
-	s.mutex.Lock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	// Copy the dirty states, logs, and preimages
 	for _, addr := range dirties {
 		// As documented [here](https://github.com/ethereum/go-ethereum/pull/16485#issuecomment-380438527),
@@ -865,7 +869,6 @@ func (s *StateDB) Copy() *StateDB {
 		}
 		state.stateObjectsDirty[addr] = struct{}{}
 	}
-	s.mutex.Unlock()
 	for hash, logs := range s.logs {
 		cpy := make([]*types.Log, len(logs))
 		for i, l := range logs {
