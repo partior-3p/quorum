@@ -218,10 +218,14 @@ func (s *StateDB) AddLog(log *types.Log) {
 }
 
 func (s *StateDB) GetLogs(hash common.Hash) []*types.Log {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	return s.logs[hash]
 }
 
 func (s *StateDB) Logs() []*types.Log {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 	var logs []*types.Log
 	for _, lgs := range s.logs {
 		logs = append(logs, lgs...)
@@ -345,11 +349,11 @@ func (s *StateDB) Reset(root common.Hash) error {
 	s.stateObjects = make(map[common.Address]*stateObject)
 	s.stateObjectsPending = make(map[common.Address]struct{})
 	s.stateObjectsDirty = make(map[common.Address]struct{})
+	s.logs = make(map[common.Hash][]*types.Log)
 	s.mutex.Unlock()
 	s.thash = common.Hash{}
 	s.bhash = common.Hash{}
 	s.txIndex = 0
-	s.logs = make(map[common.Hash][]*types.Log)
 	s.logSize = 0
 	s.preimages = make(map[common.Hash][]byte)
 	s.clearJournalAndRefund()
@@ -821,6 +825,7 @@ func (s *StateDB) Copy() *StateDB {
 	}
 	journal.mutex.Unlock()
 
+	s.mutex.RLock()
 	// Copy all the basic fields, initialize the memory ones
 	state := &StateDB{
 		db:                  s.db,
@@ -838,7 +843,6 @@ func (s *StateDB) Copy() *StateDB {
 		accountExtraDataTrie: s.db.CopyTrie(s.accountExtraDataTrie),
 	}
 
-	s.mutex.RLock()
 	// Copy the dirty states, logs, and preimages
 	for _, addr := range dirties {
 		// As documented [here](https://github.com/ethereum/go-ethereum/pull/16485#issuecomment-380438527),
