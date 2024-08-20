@@ -202,7 +202,9 @@ func (s *StateDB) Error() error {
 }
 
 func (s *StateDB) AddLog(log *types.Log) {
+	s.journalMutex.Lock()
 	s.journal.append(addLogChange{txhash: s.thash})
+	s.journalMutex.Unlock()
 
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -837,7 +839,6 @@ func (s *StateDB) Copy() *StateDB {
 	}
 
 	s.mutex.RLock()
-	defer s.mutex.RUnlock()
 	// Copy the dirty states, logs, and preimages
 	for _, addr := range dirties {
 		// As documented [here](https://github.com/ethereum/go-ethereum/pull/16485#issuecomment-380438527),
@@ -877,6 +878,7 @@ func (s *StateDB) Copy() *StateDB {
 		}
 		state.logs[hash] = cpy
 	}
+	s.mutex.RUnlock()
 	for hash, preimage := range s.preimages {
 		state.preimages[hash] = preimage
 	}
