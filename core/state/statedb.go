@@ -350,11 +350,11 @@ func (s *StateDB) Reset(root common.Hash) error {
 	s.stateObjectsPending = make(map[common.Address]struct{})
 	s.stateObjectsDirty = make(map[common.Address]struct{})
 	s.logs = make(map[common.Hash][]*types.Log)
+	s.logSize = 0
 	s.mutex.Unlock()
 	s.thash = common.Hash{}
 	s.bhash = common.Hash{}
 	s.txIndex = 0
-	s.logSize = 0
 	s.preimages = make(map[common.Hash][]byte)
 	s.clearJournalAndRefund()
 
