@@ -61,7 +61,7 @@ jobs:
             exit 1
           fi
       - name: "Upload artifact"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: ${{ env.WORKING_DIR }}/build/artifact
           name: ${{ steps.env.outputs.key }}
