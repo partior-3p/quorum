@@ -366,7 +366,8 @@ func traverseRawState(ctx *cli.Context) error {
 			blob := rawdb.ReadTrieNode(chaindb, node)
 			if len(blob) == 0 {
 				log.Error("Missing trie node(account)", "hash", node)
-				return errors.New("missing account")
+				continue
+				// return errors.New("missing account")
 			}
 		}
 		// If it's a leaf node, yes we are touching an account,
@@ -376,13 +377,15 @@ func traverseRawState(ctx *cli.Context) error {
 			var acc state.Account
 			if err := rlp.DecodeBytes(accIter.LeafBlob(), &acc); err != nil {
 				log.Error("Invalid account encountered during traversal", "err", err)
-				return errors.New("invalid account")
+				continue
+				// return errors.New("invalid account")
 			}
 			if acc.Root != emptyRoot {
 				storageTrie, err := trie.NewSecure(acc.Root, triedb)
 				if err != nil {
 					log.Error("Failed to open storage trie", "root", acc.Root, "err", err)
-					return errors.New("missing storage trie")
+					continue
+					// return errors.New("missing storage trie")
 				}
 				storageIter := storageTrie.NodeIterator(nil)
 				for storageIter.Next(true) {
@@ -394,8 +397,9 @@ func traverseRawState(ctx *cli.Context) error {
 					if node != (common.Hash{}) {
 						blob := rawdb.ReadTrieNode(chaindb, node)
 						if len(blob) == 0 {
-							log.Error("Missing trie node(storage)", "hash", node)
-							return errors.New("missing storage")
+							log.Error("Missing trie node(storage)", "hash", node, "root", acc.Root, "account", common.BytesToHash(accIter.LeafKey()))
+							continue
+							// return errors.New("missing storage")
 						}
 					}
 					// Bump the counter if it's leaf node.
@@ -404,15 +408,17 @@ func traverseRawState(ctx *cli.Context) error {
 					}
 				}
 				if storageIter.Error() != nil {
-					log.Error("Failed to traverse storage trie", "root", acc.Root, "err", storageIter.Error())
-					return storageIter.Error()
+					log.Error("Failed to traverse storage trie", "root", acc.Root, "account", common.BytesToHash(accIter.LeafKey()), "err", storageIter.Error())
+					continue
+					// return storageIter.Error()
 				}
 			}
 			if !bytes.Equal(acc.CodeHash, emptyCode) {
 				code := rawdb.ReadCode(chaindb, common.BytesToHash(acc.CodeHash))
 				if len(code) == 0 {
-					log.Error("Code is missing", "account", common.BytesToHash(accIter.LeafKey()))
-					return errors.New("missing code")
+					log.Error("Code is missing", "root", acc.Root, "account", common.BytesToHash(accIter.LeafKey()))
+					continue
+					// return errors.New("missing code")
 				}
 				codes += 1
 			}
