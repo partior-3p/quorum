@@ -1,6 +1,11 @@
 name: Release
 on:
   workflow_dispatch:
+    inputs:
+      release-version:
+        description: "(WARNING: WILL TRIGGER A RELEASE) Release version e.g. v0.0.1"
+        required: true
+        type: string
 env:
   GO_VERSION: 1.21.3
   GOPATH: ${{ github.workspace }}/go
@@ -11,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-20.04", "macos-latest"]
+        os: ["ubuntu-20.04"]
     runs-on: ${{ matrix.os }}
     steps:
       - name: "Setup Go ${{ env.GO_VERSION }}"
@@ -66,3 +71,20 @@ jobs:
           path: ${{ env.WORKING_DIR }}/build/artifact
           name: ${{ steps.env.outputs.key }}
           if-no-files-found: error
+  release:
+    needs: build-binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dists
+      - name: Display structure of downloaded files
+        run: ls -R dists
+      - name: Tag & release
+        uses: ncipollo/release-action@v1.10.0
+        with:
+          commit: ${{ github.sha }} # Use the current commit SHA
+          tag: ${{ github.event.inputs.release-version }}
+          artifacts: "**/*.zip"
+          body: "Release ${{ github.event.inputs.release-version }}"
