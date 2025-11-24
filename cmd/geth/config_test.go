@@ -568,6 +568,12 @@ AppRolePath = "approle"
 Namespace = ""
 VaultTlsServerCertPath = ""
 
+[Node.P2P.NodeKey.ConfigAws]
+SecretName = "ptr1/quorum/nodekey"
+SecretVersion = "0192831123-189273aqowieqiwe-19823123"
+KmsKeyId = "alias/mykey"
+KmsEncryptionAlgorithm = "RSAES_OAEP_SHA_256"
+
 [Node.P2P.NodeKey.ConfigFile]
 Hex = "68b1d06cb4054d40344d138e1b7b638e81b39a209e537b673357939ed4c70392"
 File = ""

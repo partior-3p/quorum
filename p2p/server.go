@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -766,6 +767,7 @@ running:
 		case c := <-srv.checkpointAddPeer:
 			// At this point the connection is past the protocol handshake.
 			// Its capabilities are known and the remote identity is verified.
+			srv.log.Debug("Adding p2p peer pre-checks", "peercount", len(peers), "conn", c.flags, "id", c.node.ID())
 			err := srv.addPeerChecks(peers, inboundCount, c)
 			if err == nil {
 				// The handshakes are done and it passed all checks.
@@ -784,6 +786,13 @@ running:
 			d := common.PrettyDuration(mclock.Now() - pd.created)
 			delete(peers, pd.ID())
 			srv.log.Debug("Removing p2p peer", "peercount", len(peers), "id", pd.ID(), "duration", d, "req", pd.requested, "err", pd.err)
+			if pd.err != nil && pd.err.Error() == DiscAlreadyConnected.Error() {
+				srv.log.Debug("Removing p2p peer due to error",
+					"server_peers", peers,
+					"dialer_peers", srv.dialsched.peers,
+					"err", pd.err)
+				srv.log.Debug("Error stack trace", "stack", string(debug.Stack()))
+			}
 			srv.dialsched.peerRemoved(pd.rw)
 			if pd.Inbound() {
 				inboundCount--

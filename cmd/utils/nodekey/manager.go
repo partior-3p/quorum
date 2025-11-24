@@ -51,6 +51,8 @@ func NewManager(source, decryptionScheme string, config []byte) (*Manager, error
 		fetch, err = fetcher.NewNodeKeyFileFetcher(config)
 	case source == constants.SourceVaultKv:
 		fetch, err = fetcher.NewNodeKeyVaultKvFetcher(config)
+	case source == constants.SourceAwsSm:
+		fetch, err = fetcher.NewNodeKeyAwsSecretsManagerFetcher(config)
 	default:
 		return nil, fmt.Errorf("unsupported source type %q", source)
 	}
@@ -64,6 +66,8 @@ func NewManager(source, decryptionScheme string, config []byte) (*Manager, error
 		decrypt, err = decrypter.NewNodeKeyDefaultDecrypter(config)
 	case decryptionScheme == constants.DecryptionVaultTse:
 		decrypt, err = decrypter.NewNodeKeyVaultTseDecrypter(config)
+	case decryptionScheme == constants.DecryptionAwsKms:
+		decrypt, err = decrypter.NewNodeKeyAwsKmsDecrypter(config)
 	default:
 		return nil, fmt.Errorf("invalid decryption scheme %q", decryptionScheme)
 	}

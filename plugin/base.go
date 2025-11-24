@@ -288,3 +288,7 @@ func (*logDelegate) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer 
 func (*logDelegate) ImpliedArgs() []interface{} {
 	return nil
 }
+
+func (*logDelegate) GetLevel() hclog.Level {
+	return hclog.NoLevel
+}

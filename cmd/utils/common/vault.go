@@ -90,6 +90,7 @@ func NewVaultClient(configBytes []byte) (*VaultClient, error) {
 				SecretId: data.AppRoleSecret,
 			},
 			vault.WithMountPath(appRolePath),
+			vault.WithNamespace(data.Namespace),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to login to vault via app role: %w", err)

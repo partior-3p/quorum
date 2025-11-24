@@ -3,6 +3,7 @@ package nodekey
 type NodeKeyConfig struct {
 	ConfigVault VaultConfig `toml:",omitempty"`
 	ConfigFile  FileConfig  `toml:",omitempty"`
+	ConfigAws   AwsConfig   `toml:",omitempty"`
 }
 
 type FileConfig struct {
@@ -24,4 +25,11 @@ type VaultConfig struct {
 	AppRolePath            string `toml:",omitempty"`
 	Namespace              string `toml:",omitempty"`
 	VaultTlsServerCertPath string `toml:",omitempty"`
+}
+
+type AwsConfig struct {
+	SecretName             string `toml:",omitempty"`
+	SecretVersion          string `toml:",omitempty"`
+	KmsKeyId               string `toml:",omitempty"`
+	KmsEncryptionAlgorithm string `toml:",omitempty"`
 }

@@ -394,7 +394,6 @@ func geth(ctx *cli.Context) error {
 // miner.
 func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend) {
 	log.DoEmitCheckpoints = ctx.GlobalBool(utils.EmitCheckpointsFlag.Name)
-	debug.Memsize.Add("node", stack)
 
 	// raft mode does not support --exitwhensynced
 	if ctx.GlobalBool(utils.ExitWhenSyncedFlag.Name) && ctx.GlobalBool(utils.RaftModeFlag.Name) {
