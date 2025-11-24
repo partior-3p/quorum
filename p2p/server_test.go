@@ -642,6 +642,59 @@ func TestServerInboundThrottle(t *testing.T) {
 	}
 }
 
+type mockDebugLogger struct {
+	loggerCount int
+	log.Logger
+}
+
+func (m *mockDebugLogger) Debug(msg string, ctx ...interface{}) {
+	if msg == "Removing p2p peer due to error" || msg == "Removing p2p peer" {
+		m.loggerCount++
+	}
+	m.Logger.Debug(msg, ctx...)
+}
+
+func TestServer_WhenErrorIsAlreadyConnected_ThenAdditionalDebugLoggingCalled(t *testing.T) {
+	srv1 := &Server{Config: Config{
+		PrivateKey:  newkey(),
+		MaxPeers:    1,
+		NoDiscovery: true,
+		Logger:      testlog.Logger(t, log.LvlTrace).New("server", "1"),
+	}}
+	srv2 := &Server{Config: Config{
+		PrivateKey:  newkey(),
+		MaxPeers:    1,
+		NoDiscovery: true,
+		NoDial:      true,
+		ListenAddr:  "127.0.0.1:0",
+		Logger:      testlog.Logger(t, log.LvlTrace).New("server", "2"),
+	}}
+	srv1.Start()
+	defer srv1.Stop()
+	srv2.Start()
+	defer srv2.Stop()
+
+	if !syncAddPeer(srv1, srv2.Self()) {
+		t.Fatal("peer not connected")
+	}
+
+	// mock logger
+	mockedLogger := &mockDebugLogger{
+		Logger:      srv1.log,
+		loggerCount: 0}
+	srv1.log = mockedLogger
+
+	// simluate peer removal due to error peer is "already connected"
+	srv1.delpeer <- peerDrop{srv1.Peers()[0], errors.New(DiscAlreadyConnected.Error()), false}
+
+	time.Sleep(2 * time.Second)
+
+	if mockedLogger.loggerCount != 2 {
+		t.Fatal("Debug() with additional information was expected to be called exactly 2 times")
+	}
+
+}
+
 func listenFakeAddr(network, laddr string, remoteAddr net.Addr) (net.Listener, error) {
 	l, err := net.Listen(network, laddr)
 	if err == nil {

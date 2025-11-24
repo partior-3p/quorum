@@ -683,12 +683,12 @@ var (
 	}
 	NodeKeySource = cli.StringFlag{
 		Name:  "nodekeysource",
-		Usage: "P2P node key source (file|vault-kv)",
+		Usage: "P2P node key source (file|vault-kv|aws-sm)",
 		Value: "file",
 	}
 	NodeKeyDecryption = cli.StringFlag{
 		Name:  "nodekeydecryption",
-		Usage: "P2P node key decryption scheme (none|vault-tse)",
+		Usage: "P2P node key decryption scheme (none|vault-tse|aws-kms)",
 		Value: "none",
 	}
 	NodeKeyFileFlag = cli.StringFlag{
@@ -1136,6 +1136,11 @@ func setNodeKey(ctx *cli.Context, cfg *p2p.Config) error {
 		}
 	case source == constants.SourceVaultKv:
 		config, err = toml.Marshal(cfg.NodeKey.ConfigVault)
+		if err != nil {
+			return fmt.Errorf("cannot parse configurations for nodekey vault fetcher: %w", err)
+		}
+	case source == constants.SourceAwsSm:
+		config, err = toml.Marshal(cfg.NodeKey.ConfigAws)
 		if err != nil {
 			return fmt.Errorf("cannot parse configurations for nodekey vault fetcher: %w", err)
 		}
