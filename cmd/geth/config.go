@@ -42,7 +42,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/permission/core"
 	"github.com/ethereum/go-ethereum/private"
-	"github.com/ethereum/go-ethereum/private/engine"
 	"github.com/ethereum/go-ethereum/qlight"
 	"github.com/naoina/toml"
 	"gopkg.in/urfave/cli.v1"
@@ -387,9 +386,9 @@ func quorumValidatePrivacyEnhancements(ethereum *eth.Ethereum) {
 
 	if privacyEnhancementsBlock != nil {
 		log.Info("Privacy enhancements is configured to be enabled from block ", "height", privacyEnhancementsBlock)
-		if !private.P.HasFeature(engine.PrivacyEnhancements) {
-			utils.Fatalf("Cannot start quorum with privacy enhancements enabled while the transaction manager does not support it")
-		}
+		// if !private.P.HasFeature(engine.PrivacyEnhancements) {
+		// 	utils.Fatalf("Cannot start quorum with privacy enhancements enabled while the transaction manager does not support it")
+		// }
 	}
 }
 
